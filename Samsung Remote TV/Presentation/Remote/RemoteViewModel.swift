@@ -116,6 +116,11 @@ final class RemoteViewModel {
         hasConfirmedControl = false
     }
 
+    func handleRemoteDisappear(shouldDisconnect: Bool) {
+        guard shouldDisconnect else { return }
+        disconnect()
+    }
+
     func sendKey(_ key: RemoteKey) {
         guard canSendCommands else { return }
         Task {
