@@ -1,24 +1,32 @@
 import SwiftUI
 
 struct DiscoveryView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: DiscoveryViewModel
+    @State private var discoveryTask: Task<Void, Never>?
     let onSelectTV: (SamsungTV) -> Void
+    let onOpenSettings: (() -> Void)?
 
-    init(viewModel: DiscoveryViewModel, onSelectTV: @escaping (SamsungTV) -> Void) {
+    init(
+        viewModel: DiscoveryViewModel,
+        onSelectTV: @escaping (SamsungTV) -> Void,
+        onOpenSettings: (() -> Void)? = nil
+    ) {
         _viewModel = State(initialValue: viewModel)
         self.onSelectTV = onSelectTV
+        self.onOpenSettings = onOpenSettings
     }
 
     var body: some View {
         Group {
-            if viewModel.discoveredTVs.isEmpty && viewModel.savedTVs.isEmpty && !viewModel.isScanning {
+            if viewModel.visibleDiscoveredTVs.isEmpty && viewModel.savedTVs.isEmpty && !viewModel.isScanning {
                 ContentUnavailableView("No TVs Found", systemImage: "tv", description: Text("Ensure iPhone and TV are on the same Wi-Fi."))
             } else {
                 List {
                     if !viewModel.savedTVs.isEmpty {
                         Section("Saved TVs") {
                             ForEach(viewModel.savedTVs) { tv in
-                                tvRow(tv)
+                                tvRow(tv, isSaved: true)
                                     .swipeActions {
                                         Button(role: .destructive) {
                                             viewModel.deleteSavedTV(tv)
@@ -31,8 +39,14 @@ struct DiscoveryView: View {
                     }
 
                     Section("Discovered TVs") {
-                        ForEach(viewModel.discoveredTVs) { tv in
-                            tvRow(tv)
+                        if viewModel.visibleDiscoveredTVs.isEmpty {
+                            Text("No new TVs found on this scan.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            ForEach(viewModel.visibleDiscoveredTVs) { tv in
+                                tvRow(tv, isSaved: false)
+                            }
                         }
                     }
                 }
@@ -41,23 +55,39 @@ struct DiscoveryView: View {
         }
         .navigationTitle("Samsung TV Remote")
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if let onOpenSettings {
+                    Button {
+                        onOpenSettings()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Add Manually") {
                     viewModel.showManualSheet = true
                 }
             }
         }
-        .overlay(alignment: .top) {
-            if viewModel.isScanning {
-                Image(systemName: "dot.radiowaves.left.and.right")
-                    .font(.largeTitle)
-                    .padding(.top, 8)
-                    .symbolEffect(.pulse, isActive: true)
+        .onAppear {
+            viewModel.loadSavedTVs()
+            startDiscoveryIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                startDiscoveryIfNeeded()
+            case .background, .inactive:
+                discoveryTask?.cancel()
+                discoveryTask = nil
+            @unknown default:
+                break
             }
         }
-        .task {
-            viewModel.loadSavedTVs()
-            await viewModel.startDiscovery()
+        .onDisappear {
+            discoveryTask?.cancel()
+            discoveryTask = nil
         }
         .refreshable {
             await viewModel.scan()
@@ -70,7 +100,9 @@ struct DiscoveryView: View {
                         .keyboardType(.numbersAndPunctuation)
                     Button("Connect") {
                         Task {
-                            await viewModel.connectManual()
+                            if let tv = await viewModel.connectManual() {
+                                onSelectTV(tv)
+                            }
                         }
                     }
                 }
@@ -90,28 +122,48 @@ struct DiscoveryView: View {
         }
     }
 
-    private func tvRow(_ tv: SamsungTV) -> some View {
-        Button {
-            onSelectTV(tv)
-        } label: {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(tv.name)
-                        .font(.headline)
-                    Text("\(tv.model) • \(tv.ipAddress)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(tv.protocolType.rawValue.capitalized)
+    private func tvRow(_ tv: SamsungTV, isSaved: Bool) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Circle()
+                .fill(isSaved ? Color.green.opacity(0.22) : Color.blue.opacity(0.20))
+                .frame(width: 34, height: 34)
+                .overlay(
+                    Image(systemName: isSaved ? "checkmark.tv.fill" : "tv.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(isSaved ? .green : .blue)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(tv.name)
+                    .font(.headline)
+                Text("\(tv.model) • \(tv.ipAddress)")
                     .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.blue.opacity(0.15))
-                    .clipShape(Capsule())
+                    .foregroundStyle(.secondary)
+                Text(tv.protocolType.rawValue.capitalized)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button(isSaved ? "Open" : "Connect") {
+                onSelectTV(tv)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .padding(.vertical, 6)
+    }
+
+    private func startDiscoveryIfNeeded() {
+        guard scenePhase == .active else { return }
+        guard discoveryTask == nil else { return }
+        discoveryTask = Task {
+            await viewModel.startDiscovery()
+            await MainActor.run {
+                discoveryTask = nil
             }
         }
-        .buttonStyle(.plain)
     }
 }
 
