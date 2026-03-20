@@ -1,0 +1,4 @@
+# Optional Python dependencies for local crypto/debug tooling.
+# The iOS app itself does not depend on Python at runtime.
+
+pycryptodome>=3.20
