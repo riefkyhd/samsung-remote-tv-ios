@@ -12,6 +12,16 @@
 		C394D5B32F6D456F0022257A /* BigInt in Frameworks */ = {isa = PBXBuildFile; productRef = C394D5B22F6D456F0022257A /* BigInt */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		C394D5D72F6DBCDA0022257A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C394D1902F6C2D430022257A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C394D1972F6C2D430022257A;
+			remoteInfo = "Samsung Remote TV";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		C394D2972F6D10150022257A /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -29,12 +39,18 @@
 /* Begin PBXFileReference section */
 		C394D1982F6C2D430022257A /* Samsung Remote TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Samsung Remote TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C394D4A32F6D16B20022257A /* SmartView.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SmartView.xcframework; path = "Samsung Remote TV/Frameworks/SmartView.framework/SmartViewSDK-iOS-Xcode14.1/SmartView.xcframework"; sourceTree = "<group>"; };
+		C394D5D32F6DBCDA0022257A /* SamsungTVRemoteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SamsungTVRemoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C394D19A2F6C2D430022257A /* Samsung Remote TV */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Samsung Remote TV";
+			sourceTree = "<group>";
+		};
+		C394D5D42F6DBCDA0022257A /* SamsungTVRemoteTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SamsungTVRemoteTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +65,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C394D5D02F6DBCDA0022257A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -56,6 +79,7 @@
 			isa = PBXGroup;
 			children = (
 				C394D19A2F6C2D430022257A /* Samsung Remote TV */,
+				C394D5D42F6DBCDA0022257A /* SamsungTVRemoteTests */,
 				C394D4A22F6D16B20022257A /* Frameworks */,
 				C394D1992F6C2D430022257A /* Products */,
 			);
@@ -65,6 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				C394D1982F6C2D430022257A /* Samsung Remote TV.app */,
+				C394D5D32F6DBCDA0022257A /* SamsungTVRemoteTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,6 +130,29 @@
 			productReference = C394D1982F6C2D430022257A /* Samsung Remote TV.app */;
 			productType = "com.apple.product-type.application";
 		};
+		C394D5D22F6DBCDA0022257A /* SamsungTVRemoteTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C394D5D92F6DBCDA0022257A /* Build configuration list for PBXNativeTarget "SamsungTVRemoteTests" */;
+			buildPhases = (
+				C394D5CF2F6DBCDA0022257A /* Sources */,
+				C394D5D02F6DBCDA0022257A /* Frameworks */,
+				C394D5D12F6DBCDA0022257A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C394D5D82F6DBCDA0022257A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				C394D5D42F6DBCDA0022257A /* SamsungTVRemoteTests */,
+			);
+			name = SamsungTVRemoteTests;
+			packageProductDependencies = (
+			);
+			productName = SamsungTVRemoteTests;
+			productReference = C394D5D32F6DBCDA0022257A /* SamsungTVRemoteTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -117,6 +165,10 @@
 				TargetAttributes = {
 					C394D1972F6C2D430022257A = {
 						CreatedOnToolsVersion = 26.3;
+					};
+					C394D5D22F6DBCDA0022257A = {
+						CreatedOnToolsVersion = 26.3;
+						TestTargetID = C394D1972F6C2D430022257A;
 					};
 				};
 			};
@@ -138,12 +190,20 @@
 			projectRoot = "";
 			targets = (
 				C394D1972F6C2D430022257A /* Samsung Remote TV */,
+				C394D5D22F6DBCDA0022257A /* SamsungTVRemoteTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		C394D1962F6C2D430022257A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C394D5D12F6DBCDA0022257A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -181,7 +241,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C394D5CF2F6DBCDA0022257A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C394D5D82F6DBCDA0022257A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C394D1972F6C2D430022257A /* Samsung Remote TV */;
+			targetProxy = C394D5D72F6DBCDA0022257A /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		C394D1A12F6C2D450022257A /* Debug */ = {
@@ -381,6 +456,50 @@
 			};
 			name = Release;
 		};
+		C394D5DA2F6DBCDA0022257A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W44SQXDP84;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = riefkyhd.SamsungTVRemoteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Samsung Remote TV.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Samsung Remote TV";
+			};
+			name = Debug;
+		};
+		C394D5DB2F6DBCDA0022257A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W44SQXDP84;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = riefkyhd.SamsungTVRemoteTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Samsung Remote TV.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Samsung Remote TV";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -398,6 +517,15 @@
 			buildConfigurations = (
 				C394D1A42F6C2D450022257A /* Debug */,
 				C394D1A52F6C2D450022257A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C394D5D92F6DBCDA0022257A /* Build configuration list for PBXNativeTarget "SamsungTVRemoteTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C394D5DA2F6DBCDA0022257A /* Debug */,
+				C394D5DB2F6DBCDA0022257A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

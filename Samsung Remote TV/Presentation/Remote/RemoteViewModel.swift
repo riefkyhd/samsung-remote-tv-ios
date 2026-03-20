@@ -18,6 +18,7 @@ final class RemoteViewModel {
     var hasConfirmedControl = false
     var showPinSheet = false
     var pinCode = ""
+    var pinErrorMessage: String?
     var pinCountdown = 30
     var isSubmittingPin = false
     var isProbingVariants = false
@@ -27,22 +28,49 @@ final class RemoteViewModel {
     private let getInstalledAppsUseCase: GetInstalledAppsUseCase
     private let wakeOnLanUseCase: WakeOnLanUseCase
     private let pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase
-    private let repository: TVRepositoryImpl
+    private let disconnectTVUseCase: DisconnectTVUseCase
+    private let launchTVAppUseCase: LaunchTVAppUseCase
     private var connectionTask: Task<Void, Never>?
     private var pinTimerTask: Task<Void, Never>?
 
-    init(tv: SamsungTV, dependencies: AppDependencies) {
+    init(
+        tv: SamsungTV,
+        connectToTVUseCase: ConnectToTVUseCase,
+        sendRemoteKeyUseCase: SendRemoteKeyUseCase,
+        getInstalledAppsUseCase: GetInstalledAppsUseCase,
+        wakeOnLanUseCase: WakeOnLanUseCase,
+        pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase,
+        disconnectTVUseCase: DisconnectTVUseCase,
+        launchTVAppUseCase: LaunchTVAppUseCase
+    ) {
         self.tv = tv
-        self.connectToTVUseCase = dependencies.connectToTVUseCase
-        self.sendRemoteKeyUseCase = dependencies.sendRemoteKeyUseCase
-        self.getInstalledAppsUseCase = dependencies.getInstalledAppsUseCase
-        self.wakeOnLanUseCase = dependencies.wakeOnLanUseCase
-        self.pairWithEncryptedTVUseCase = dependencies.pairWithEncryptedTVUseCase
-        self.repository = dependencies.repository
+        self.connectToTVUseCase = connectToTVUseCase
+        self.sendRemoteKeyUseCase = sendRemoteKeyUseCase
+        self.getInstalledAppsUseCase = getInstalledAppsUseCase
+        self.wakeOnLanUseCase = wakeOnLanUseCase
+        self.pairWithEncryptedTVUseCase = pairWithEncryptedTVUseCase
+        self.disconnectTVUseCase = disconnectTVUseCase
+        self.launchTVAppUseCase = launchTVAppUseCase
+    }
+
+    convenience init(tv: SamsungTV, dependencies: AppDependencies) {
+        self.init(
+            tv: tv,
+            connectToTVUseCase: dependencies.connectToTVUseCase,
+            sendRemoteKeyUseCase: dependencies.sendRemoteKeyUseCase,
+            getInstalledAppsUseCase: dependencies.getInstalledAppsUseCase,
+            wakeOnLanUseCase: dependencies.wakeOnLanUseCase,
+            pairWithEncryptedTVUseCase: dependencies.pairWithEncryptedTVUseCase,
+            disconnectTVUseCase: dependencies.disconnectTVUseCase,
+            launchTVAppUseCase: dependencies.launchTVAppUseCase
+        )
     }
 
     func connect() {
         connectionTask?.cancel()
+        connectionTask = nil
+        connectionState = .disconnected
+        hasConfirmedControl = false
         isProbingVariants = (tv.protocolType == .encrypted)
         connectionTask = Task {
             for await state in connectToTVUseCase.executeWithReconnection(tv: tv) {
@@ -58,17 +86,20 @@ final class RemoteViewModel {
                     isProbingVariants = false
                     pinCountdown = countdown
                     pinCode = ""
+                    pinErrorMessage = nil
                     showPinSheet = true
                     startPinCountdown()
                 }
                 if case .error(let error) = state {
                     isProbingVariants = false
+                    hasConfirmedControl = false
                     showError = true
-                    errorMessage = error.localizedDescription
+                    errorMessage = userFriendlyMessage(for: error)
                     print("[TVDBG][UI][ERROR] \(errorMessage)")
                 }
                 if case .connected = state {
                     isProbingVariants = false
+                    hasConfirmedControl = true
                 }
             }
         }
@@ -79,7 +110,7 @@ final class RemoteViewModel {
         connectionTask = nil
         pinTimerTask?.cancel()
         Task {
-            await repository.disconnect()
+            await disconnectTVUseCase.execute()
         }
         connectionState = .disconnected
         hasConfirmedControl = false
@@ -94,7 +125,11 @@ final class RemoteViewModel {
                 hasConfirmedControl = true
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
             }
         }
     }
@@ -108,7 +143,11 @@ final class RemoteViewModel {
                 hasConfirmedControl = true
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
             }
         }
     }
@@ -128,7 +167,11 @@ final class RemoteViewModel {
                 installedApps = try await getInstalledAppsUseCase.execute(for: tv)
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
             }
         }
     }
@@ -137,11 +180,15 @@ final class RemoteViewModel {
         guard canSendCommands else { return }
         Task {
             do {
-                try await repository.launchApp(appId: app.id)
+                try await launchTVAppUseCase.execute(appId: app.id)
                 hasConfirmedControl = true
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
             }
         }
     }
@@ -155,7 +202,11 @@ final class RemoteViewModel {
                 try await wakeOnLanUseCase.execute(macAddress: tv.macAddress)
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
             }
         }
     }
@@ -163,10 +214,14 @@ final class RemoteViewModel {
     var connectionColor: Color {
         switch connectionState {
         case .connected:
-            return hasConfirmedControl ? .green : .orange
-        case .connecting, .pairing, .pinRequired:
+            return .green
+        case .connecting, .pairing:
+            return .yellow
+        case .pinRequired:
             return .orange
-        case .disconnected, .error:
+        case .disconnected:
+            return .gray
+        case .error:
             return .red
         }
     }
@@ -174,20 +229,17 @@ final class RemoteViewModel {
     var connectionLabel: String {
         switch connectionState {
         case .connected:
-            return hasConfirmedControl ? "Ready" : "Connected"
+            return "Connected"
         case .connecting:
-            return "Connecting"
+            return "Connecting..."
         case .pairing:
-            return "Pairing"
+            return "Pairing..."
         case .pinRequired:
-            return "PIN Required"
+            return "Enter PIN"
         case .disconnected:
-            return "Offline"
+            return "Disconnected"
         case .error(let error):
-            if case .unsupportedProtocol = error {
-                return "Unsupported"
-            }
-            return "Error"
+            return error.localizedDescription
         }
     }
 
@@ -201,9 +253,11 @@ final class RemoteViewModel {
     func submitPin() {
         guard !isSubmittingPin else { return }
         let sanitized = pinCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        pinErrorMessage = nil
         guard !sanitized.isEmpty else {
             showError = true
             errorMessage = "Enter PIN shown on TV."
+            pinErrorMessage = errorMessage
             print("[TVDBG][UI][ERROR] \(errorMessage)")
             return
         }
@@ -221,7 +275,12 @@ final class RemoteViewModel {
                 connect()
             } catch {
                 showError = true
-                errorMessage = error.localizedDescription
+                if let tvError = error as? TVError {
+                    errorMessage = userFriendlyMessage(for: tvError)
+                } else {
+                    errorMessage = "Could not connect. Please make sure the TV is on."
+                }
+                pinErrorMessage = errorMessage
                 print("[TVDBG][UI][ERROR] \(errorMessage)")
             }
         }
@@ -231,6 +290,7 @@ final class RemoteViewModel {
         pinTimerTask?.cancel()
         showPinSheet = false
         isProbingVariants = false
+        pinErrorMessage = nil
         connectionState = .disconnected
         disconnect()
     }
@@ -248,8 +308,31 @@ final class RemoteViewModel {
                 connectionState = .error(.pinTimeout)
                 showError = true
                 errorMessage = TVError.pinTimeout.localizedDescription
+                pinErrorMessage = nil
                 disconnect()
             }
+        }
+    }
+
+    private func userFriendlyMessage(for error: TVError) -> String {
+        switch error {
+        case .pairingRejected:
+            return "Incorrect PIN. Please try again."
+        case .connectionFailed, .notConnected, .spcHandshakeFailed:
+            return "Could not connect to TV. Please make sure the TV is on and connected to the same Wi-Fi."
+        case .spcTokenExpired:
+            return "Pairing expired. Please reconnect to the TV."
+        case .spcPairingFailed(let reason):
+            if reason.lowercased().contains("pin page") {
+                return "Could not open PIN on TV. Please try again."
+            }
+            return "Could not start pairing. Please try again."
+        case .notOnWifi:
+            return "Please connect to Wi-Fi to control your TV."
+        case .pinTimeout:
+            return "PIN entry timed out. Please try again."
+        default:
+            return "Could not connect. Please make sure the TV is on."
         }
     }
 }

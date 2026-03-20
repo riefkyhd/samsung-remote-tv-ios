@@ -9,16 +9,34 @@ final class SettingsViewModel {
     var alertMessage: String?
 
     private let getSavedTVsUseCase: GetSavedTVsUseCase
-    private let repository: TVRepositoryImpl
+    private let forgetDeviceUseCase: ForgetDeviceUseCase
+    private let getRemoteNameUseCase: GetRemoteNameUseCase
+    private let setRemoteNameUseCase: SetRemoteNameUseCase
 
-    init(dependencies: AppDependencies) {
-        self.getSavedTVsUseCase = dependencies.getSavedTVsUseCase
-        self.repository = dependencies.repository
+    init(
+        getSavedTVsUseCase: GetSavedTVsUseCase,
+        forgetDeviceUseCase: ForgetDeviceUseCase,
+        getRemoteNameUseCase: GetRemoteNameUseCase,
+        setRemoteNameUseCase: SetRemoteNameUseCase
+    ) {
+        self.getSavedTVsUseCase = getSavedTVsUseCase
+        self.forgetDeviceUseCase = forgetDeviceUseCase
+        self.getRemoteNameUseCase = getRemoteNameUseCase
+        self.setRemoteNameUseCase = setRemoteNameUseCase
+    }
+
+    convenience init(dependencies: AppDependencies) {
+        self.init(
+            getSavedTVsUseCase: dependencies.getSavedTVsUseCase,
+            forgetDeviceUseCase: dependencies.forgetDeviceUseCase,
+            getRemoteNameUseCase: dependencies.getRemoteNameUseCase,
+            setRemoteNameUseCase: dependencies.setRemoteNameUseCase
+        )
     }
 
     func load() {
         savedTVs = (try? getSavedTVsUseCase.execute()) ?? []
-        remoteName = repository.getRemoteName()
+        remoteName = getRemoteNameUseCase.execute()
     }
 
     func rename(tv: SamsungTV, to newName: String) {
@@ -39,9 +57,11 @@ final class SettingsViewModel {
         }
     }
 
-    func forgetToken(for tv: SamsungTV) {
+    func forgetDevice(_ tv: SamsungTV) {
         do {
-            try repository.forgetToken(for: tv.macAddress)
+            try forgetDeviceUseCase.execute(tv)
+            load()
+            print("[TVDBG][Settings] forgot device name=\(tv.name)")
         } catch {
             alertMessage = error.localizedDescription
         }
@@ -49,7 +69,7 @@ final class SettingsViewModel {
 
     func saveRemoteName() {
         do {
-            try repository.setRemoteName(remoteName)
+            try setRemoteNameUseCase.execute(remoteName)
         } catch {
             alertMessage = error.localizedDescription
         }

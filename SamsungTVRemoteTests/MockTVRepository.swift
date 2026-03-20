@@ -8,6 +8,9 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
     var shouldThrowOnSend = false
     var sentKeys: [(RemoteKey, String)] = []
     var launchedAppId: String?
+    var disconnectCalled = false
+    var forgottenTokens: [String] = []
+    var remoteNameValue = "SamsungTVRemote"
 
     func discoverTVs() -> AsyncStream<SamsungTV> {
         AsyncStream { continuation in
@@ -31,7 +34,12 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
         }
     }
 
-    func disconnect() async {}
+    func completeEncryptedPairing(pin: String, for tv: SamsungTV) async throws {
+        _ = pin
+        _ = tv
+    }
+
+    func disconnect() async { disconnectCalled = true }
 
     func sendKey(_ key: RemoteKey, command: String) async throws {
         if shouldThrowOnSend { throw TVError.notConnected }
@@ -61,7 +69,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
         }
     }
 
-    func forgetToken(for macAddress: String) throws { _ = macAddress }
-    func getRemoteName() -> String { "SamsungTVRemote" }
-    func setRemoteName(_ name: String) throws { _ = name }
+    func forgetToken(for macAddress: String) throws { forgottenTokens.append(macAddress) }
+    func getRemoteName() -> String { remoteNameValue }
+    func setRemoteName(_ name: String) throws { remoteNameValue = name }
 }

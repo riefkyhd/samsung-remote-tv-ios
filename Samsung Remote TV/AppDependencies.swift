@@ -4,8 +4,6 @@ import Observation
 @Observable
 @MainActor
 final class AppDependencies {
-    let repository: TVRepositoryImpl
-
     let discoverTVsUseCase: DiscoverTVsUseCase
     let connectToTVUseCase: ConnectToTVUseCase
     let sendRemoteKeyUseCase: SendRemoteKeyUseCase
@@ -13,6 +11,11 @@ final class AppDependencies {
     let wakeOnLanUseCase: WakeOnLanUseCase
     let getInstalledAppsUseCase: GetInstalledAppsUseCase
     let pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase
+    let disconnectTVUseCase: DisconnectTVUseCase
+    let launchTVAppUseCase: LaunchTVAppUseCase
+    let forgetDeviceUseCase: ForgetDeviceUseCase
+    let getRemoteNameUseCase: GetRemoteNameUseCase
+    let setRemoteNameUseCase: SetRemoteNameUseCase
 
     init() {
         let restClient = SamsungTVRestClient()
@@ -40,7 +43,6 @@ final class AppDependencies {
             ssdpDiscovery: ssdp
         )
 
-        self.repository = repository
         self.discoverTVsUseCase = DiscoverTVsUseCase(repository: repository)
         self.connectToTVUseCase = ConnectToTVUseCase(repository: repository)
         self.sendRemoteKeyUseCase = SendRemoteKeyUseCase(repository: repository)
@@ -48,5 +50,10 @@ final class AppDependencies {
         self.wakeOnLanUseCase = WakeOnLanUseCase(repository: repository)
         self.getInstalledAppsUseCase = GetInstalledAppsUseCase(repository: repository)
         self.pairWithEncryptedTVUseCase = PairWithEncryptedTVUseCase(repository: repository)
+        self.disconnectTVUseCase = DisconnectTVUseCase(repository: repository)
+        self.launchTVAppUseCase = LaunchTVAppUseCase(repository: repository)
+        self.forgetDeviceUseCase = ForgetDeviceUseCase(repository: repository)
+        self.getRemoteNameUseCase = GetRemoteNameUseCase(repository: repository)
+        self.setRemoteNameUseCase = SetRemoteNameUseCase(repository: repository)
     }
 }
