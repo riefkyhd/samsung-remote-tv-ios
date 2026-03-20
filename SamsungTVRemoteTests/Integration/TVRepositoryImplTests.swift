@@ -38,4 +38,62 @@ struct TVRepositoryImplTests {
         let merged = Dictionary(grouping: [a, b], by: { $0.macAddress }).compactMap { $0.value.first }
         #expect(merged.count == 1)
     }
+
+    @Test("ForgetPairing clears token, SPC credentials, and SPC variants but keeps saved TV")
+    func forgetPairingClearsPairingArtifacts() async throws {
+        let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.forgetPairing")!
+        defaults.removePersistentDomain(forName: "TVRepositoryImplTests.forgetPairing")
+        let storage = TVUserDefaultsStorage(userDefaults: defaults)
+        let repository = makeRepository(storage: storage)
+        let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
+
+        try repository.saveTV(tv)
+        storage.saveToken("token123", macAddress: tv.macAddress)
+        try storage.saveSpcCredentials(.init(ctxUpperHex: "ABCD", sessionId: 5), identifier: tv.macAddress)
+        try storage.saveSpcVariants(.init(step0: "s0", step1: "s1"), identifier: tv.macAddress)
+
+        try await repository.forgetPairing(for: tv)
+
+        #expect(storage.loadToken(macAddress: tv.macAddress) == nil)
+        #expect(storage.loadSpcCredentials(identifier: tv.macAddress) == nil)
+        #expect(storage.loadSpcVariants(identifier: tv.macAddress) == nil)
+        #expect(try repository.getSavedTVs().count == 1)
+    }
+
+    @Test("RemoveDevice clears pairing artifacts and deletes saved TV entry")
+    func removeDeviceClearsArtifactsAndDeletesSavedTV() async throws {
+        let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.removeDevice")!
+        defaults.removePersistentDomain(forName: "TVRepositoryImplTests.removeDevice")
+        let storage = TVUserDefaultsStorage(userDefaults: defaults)
+        let repository = makeRepository(storage: storage)
+        let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
+
+        try repository.saveTV(tv)
+        storage.saveToken("token123", macAddress: tv.macAddress)
+        try storage.saveSpcCredentials(.init(ctxUpperHex: "ABCD", sessionId: 5), identifier: tv.macAddress)
+        try storage.saveSpcVariants(.init(step0: "s0", step1: "s1"), identifier: tv.macAddress)
+
+        try await repository.removeDevice(tv)
+
+        #expect(storage.loadToken(macAddress: tv.macAddress) == nil)
+        #expect(storage.loadSpcCredentials(identifier: tv.macAddress) == nil)
+        #expect(storage.loadSpcVariants(identifier: tv.macAddress) == nil)
+        #expect(try repository.getSavedTVs().isEmpty)
+    }
+
+    private func makeRepository(storage: TVUserDefaultsStorage) -> TVRepositoryImpl {
+        let restClient = SamsungTVRestClient()
+        return TVRepositoryImpl(
+            restClient: restClient,
+            webSocketClient: SamsungTVWebSocketClient(),
+            smartViewClient: SmartViewSDKClient(),
+            spcWebSocketClient: SpcWebSocketClient(),
+            spcHandshakeClient: SpcHandshakeClient(),
+            legacyRemoteClient: SamsungLegacyRemoteClient(),
+            storage: storage,
+            ipRangeScanner: IPRangeScanner(restClient: restClient),
+            bonjourDiscovery: BonjourDiscovery(restClient: restClient),
+            ssdpDiscovery: SSDPDiscovery(restClient: restClient)
+        )
+    }
 }

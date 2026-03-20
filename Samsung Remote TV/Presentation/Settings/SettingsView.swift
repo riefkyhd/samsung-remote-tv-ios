@@ -13,18 +13,23 @@ struct SettingsView: View {
             Section("Saved TVs") {
                 ForEach(viewModel.savedTVs) { tv in
                     HStack {
-                        Text(tv.name)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(tv.name)
+                            Text("Forget Pairing clears token/SPC data. Remove Device also deletes this saved TV.")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
                         Spacer()
-                        Button("Forget Token", role: .destructive) {
-                            viewModel.forgetToken(for: tv)
+                        Button("Forget Pairing") {
+                            viewModel.forgetPairing(tv)
                         }
                         .font(.caption)
                     }
                     .swipeActions {
                         Button(role: .destructive) {
-                            viewModel.delete(tv: tv)
+                            viewModel.removeDevice(tv)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label("Remove Device", systemImage: "trash")
                         }
                     }
                 }

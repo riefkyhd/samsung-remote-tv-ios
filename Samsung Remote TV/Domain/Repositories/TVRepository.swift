@@ -19,7 +19,8 @@ protocol TVRepository: Sendable {
     func deleteTV(_ tv: SamsungTV) throws
     func renameTV(id: UUID, name: String) throws
 
-    func forgetToken(for macAddress: String) throws
+    func forgetPairing(for tv: SamsungTV) async throws
+    func removeDevice(_ tv: SamsungTV) async throws
     func getRemoteName() -> String
     func setRemoteName(_ name: String) throws
 }

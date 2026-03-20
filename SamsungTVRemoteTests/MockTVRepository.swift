@@ -9,7 +9,8 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
     var sentKeys: [(RemoteKey, String)] = []
     var launchedAppId: String?
     var disconnectCalled = false
-    var forgottenTokens: [String] = []
+    var pairingForgottenForTVs: [SamsungTV] = []
+    var removedTVs: [SamsungTV] = []
     var remoteNameValue = "SamsungTVRemote"
 
     func discoverTVs() -> AsyncStream<SamsungTV> {
@@ -69,7 +70,11 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
         }
     }
 
-    func forgetToken(for macAddress: String) throws { forgottenTokens.append(macAddress) }
+    func forgetPairing(for tv: SamsungTV) async throws { pairingForgottenForTVs.append(tv) }
+    func removeDevice(_ tv: SamsungTV) async throws {
+        removedTVs.append(tv)
+        savedTVs.removeAll { $0.id == tv.id }
+    }
     func getRemoteName() -> String { remoteNameValue }
     func setRemoteName(_ name: String) throws { remoteNameValue = name }
 }

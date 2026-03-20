@@ -297,8 +297,17 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         try storage.saveTVs(tvs)
     }
 
-    func forgetToken(for macAddress: String) throws {
-        storage.deleteToken(macAddress: macAddress)
+    func forgetPairing(for tv: SamsungTV) async throws {
+        clearPairingArtifacts(for: tv)
+        if isCurrentTV(tv) {
+            await disconnect()
+            currentTV = nil
+        }
+    }
+
+    func removeDevice(_ tv: SamsungTV) async throws {
+        try await forgetPairing(for: tv)
+        try deleteTV(tv)
     }
 
     func getRemoteName() -> String {
@@ -359,6 +368,10 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             return false
         }
         activeTransport = .webSocket
+        guard await isTVReachable(ip: tv.ipAddress) else {
+            print("[TVDBG][Repo] tv not reachable ip=\(tv.ipAddress) skip websocket")
+            return false
+        }
         let tokenKey = tokenIdentifier(for: tv)
         let token = storage.loadToken(macAddress: tokenKey)
         print("[TVDBG][Repo] try websocket ip=\(tv.ipAddress) token=\(token != nil)")
@@ -392,6 +405,21 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             }
         }
         return connected && !hadError
+    }
+
+    private func isTVReachable(ip: String) async -> Bool {
+        guard let url = URL(string: "http://\(ip):8001/api/v2/") else { return false }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 2.0
+        do {
+            let (_, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse {
+                return (200..<500).contains(http.statusCode)
+            }
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func connectUsingLegacy(
@@ -441,6 +469,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             if case .connected = state {
                 everConnected = true
                 transportConnected = true
+                try? saveTV(tv)
             }
             if case .error = state {
                 transportConnected = false
@@ -498,12 +527,16 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 credentials: credentials,
                 continuation: continuation
             )
-            if !connected {
-                transportConnected = false
-                storage.deleteSpcCredentials(identifier: identifier)
-                continuation.yield(.error(.spcTokenExpired))
+            if connected {
+                return true
             }
-            return connected
+
+            // Stored SPC credentials are stale. Remove them and continue directly
+            // into fresh PIN pairing in this same connect attempt.
+            transportConnected = false
+            activeSpcCredentials = nil
+            storage.deleteSpcCredentials(identifier: identifier)
+            storage.deleteSpcVariants(identifier: identifier)
         }
 
         do {
@@ -539,6 +572,32 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             return tv.macAddress
         }
         return "ip_\(tv.ipAddress)"
+    }
+
+    private func clearPairingArtifacts(for tv: SamsungTV) {
+        var identifiers = Set<String>()
+        identifiers.insert(tokenIdentifier(for: tv))
+        identifiers.insert("ip_\(tv.ipAddress)")
+        if !tv.macAddress.isEmpty {
+            identifiers.insert(tv.macAddress)
+        }
+
+        for identifier in identifiers where !identifier.isEmpty {
+            storage.deleteToken(macAddress: identifier)
+            storage.deleteSpcCredentials(identifier: identifier)
+            storage.deleteSpcVariants(identifier: identifier)
+        }
+        activeSpcCredentials = nil
+        spcPairingInProgress = false
+    }
+
+    private func isCurrentTV(_ tv: SamsungTV) -> Bool {
+        guard let currentTV else { return false }
+        if currentTV.id == tv.id { return true }
+        if !tv.macAddress.isEmpty && currentTV.macAddress.caseInsensitiveCompare(tv.macAddress) == .orderedSame {
+            return true
+        }
+        return currentTV.ipAddress == tv.ipAddress
     }
 
     private func isLikelyLegacyEncrypted(_ tv: SamsungTV) -> Bool {

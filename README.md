@@ -5,7 +5,7 @@ Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local netw
 ## Features
 
 - Auto discovery via Bonjour, SSDP, and IP-range scanning
-- Saved TVs with rename/delete/forget device support
+- Saved TVs with rename, forget pairing, and remove device support
 - Protocol handling for:
   - Modern WebSocket TVs
   - Legacy encrypted SPC TVs (PIN pairing)
@@ -43,7 +43,8 @@ Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local netw
 - Keep TV turned on and connected to the same Wi-Fi.
 - PIN sheet appears when pairing is required.
 - Enter the PIN shown on TV.
-- If pairing data is stale, use **Forget Device** in Settings and pair again.
+- If pairing data is stale, use **Forget Pairing** in Settings and pair again.
+- Use **Remove Device** when you want to clear pairing data and delete the saved TV entry.
 
 ## Logging
 
@@ -62,7 +63,7 @@ Useful tags include:
   - Pull to refresh on discovery screen.
 - Cannot control after reconnect:
   - Retry connection from remote screen.
-  - Forget device and re-pair if token/session expired.
+  - Forget pairing and re-pair if token/session expired.
 - No PIN shown on TV:
   - Retry pairing and ensure CloudPIN page is running on TV.
 

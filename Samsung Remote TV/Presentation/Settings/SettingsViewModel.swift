@@ -9,18 +9,21 @@ final class SettingsViewModel {
     var alertMessage: String?
 
     private let getSavedTVsUseCase: GetSavedTVsUseCase
-    private let forgetDeviceUseCase: ForgetDeviceUseCase
+    private let forgetPairingUseCase: ForgetPairingUseCase
+    private let removeDeviceUseCase: RemoveDeviceUseCase
     private let getRemoteNameUseCase: GetRemoteNameUseCase
     private let setRemoteNameUseCase: SetRemoteNameUseCase
 
     init(
         getSavedTVsUseCase: GetSavedTVsUseCase,
-        forgetDeviceUseCase: ForgetDeviceUseCase,
+        forgetPairingUseCase: ForgetPairingUseCase,
+        removeDeviceUseCase: RemoveDeviceUseCase,
         getRemoteNameUseCase: GetRemoteNameUseCase,
         setRemoteNameUseCase: SetRemoteNameUseCase
     ) {
         self.getSavedTVsUseCase = getSavedTVsUseCase
-        self.forgetDeviceUseCase = forgetDeviceUseCase
+        self.forgetPairingUseCase = forgetPairingUseCase
+        self.removeDeviceUseCase = removeDeviceUseCase
         self.getRemoteNameUseCase = getRemoteNameUseCase
         self.setRemoteNameUseCase = setRemoteNameUseCase
     }
@@ -28,7 +31,8 @@ final class SettingsViewModel {
     convenience init(dependencies: AppDependencies) {
         self.init(
             getSavedTVsUseCase: dependencies.getSavedTVsUseCase,
-            forgetDeviceUseCase: dependencies.forgetDeviceUseCase,
+            forgetPairingUseCase: dependencies.forgetPairingUseCase,
+            removeDeviceUseCase: dependencies.removeDeviceUseCase,
             getRemoteNameUseCase: dependencies.getRemoteNameUseCase,
             setRemoteNameUseCase: dependencies.setRemoteNameUseCase
         )
@@ -57,13 +61,27 @@ final class SettingsViewModel {
         }
     }
 
-    func forgetDevice(_ tv: SamsungTV) {
-        do {
-            try forgetDeviceUseCase.execute(tv)
-            load()
-            print("[TVDBG][Settings] forgot device name=\(tv.name)")
-        } catch {
-            alertMessage = error.localizedDescription
+    func forgetPairing(_ tv: SamsungTV) {
+        Task {
+            do {
+                try await forgetPairingUseCase.execute(tv)
+                load()
+                print("[TVDBG][Settings] forgot pairing for=\(tv.name)")
+            } catch {
+                alertMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func removeDevice(_ tv: SamsungTV) {
+        Task {
+            do {
+                try await removeDeviceUseCase.execute(tv)
+                load()
+                print("[TVDBG][Settings] removed device=\(tv.name)")
+            } catch {
+                alertMessage = error.localizedDescription
+            }
         }
     }
 

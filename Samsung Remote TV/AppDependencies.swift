@@ -13,7 +13,8 @@ final class AppDependencies {
     let pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase
     let disconnectTVUseCase: DisconnectTVUseCase
     let launchTVAppUseCase: LaunchTVAppUseCase
-    let forgetDeviceUseCase: ForgetDeviceUseCase
+    let forgetPairingUseCase: ForgetPairingUseCase
+    let removeDeviceUseCase: RemoveDeviceUseCase
     let getRemoteNameUseCase: GetRemoteNameUseCase
     let setRemoteNameUseCase: SetRemoteNameUseCase
 
@@ -52,7 +53,8 @@ final class AppDependencies {
         self.pairWithEncryptedTVUseCase = PairWithEncryptedTVUseCase(repository: repository)
         self.disconnectTVUseCase = DisconnectTVUseCase(repository: repository)
         self.launchTVAppUseCase = LaunchTVAppUseCase(repository: repository)
-        self.forgetDeviceUseCase = ForgetDeviceUseCase(repository: repository)
+        self.forgetPairingUseCase = ForgetPairingUseCase(repository: repository)
+        self.removeDeviceUseCase = RemoveDeviceUseCase(repository: repository)
         self.getRemoteNameUseCase = GetRemoteNameUseCase(repository: repository)
         self.setRemoteNameUseCase = SetRemoteNameUseCase(repository: repository)
     }

@@ -24,16 +24,29 @@ struct RepositoryBoundaryUseCaseTests {
         #expect(repo.launchedAppId == "111299001912")
     }
 
-    @Test("ForgetDeviceUseCase forgets token and removes saved tv")
-    func forgetUseCaseCleansPairingAndSavedTv() throws {
+    @Test("ForgetPairingUseCase clears pairing state without removing saved tv")
+    func forgetPairingUseCaseKeepsSavedTv() async throws {
         let repo = MockTVRepository()
         let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.20", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .tizen)
         repo.savedTVs = [tv]
-        let sut = ForgetDeviceUseCase(repository: repo)
+        let sut = ForgetPairingUseCase(repository: repo)
 
-        try sut.execute(tv)
+        try await sut.execute(tv)
 
-        #expect(repo.forgottenTokens.contains("AA:BB:CC:DD:EE:FF"))
+        #expect(repo.pairingForgottenForTVs.count == 1)
+        #expect(repo.savedTVs.count == 1)
+    }
+
+    @Test("RemoveDeviceUseCase removes saved tv and pairing state")
+    func removeDeviceUseCaseRemovesSavedTv() async throws {
+        let repo = MockTVRepository()
+        let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.20", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .tizen)
+        repo.savedTVs = [tv]
+        let sut = RemoveDeviceUseCase(repository: repo)
+
+        try await sut.execute(tv)
+
+        #expect(repo.removedTVs.count == 1)
         #expect(repo.savedTVs.isEmpty)
     }
 

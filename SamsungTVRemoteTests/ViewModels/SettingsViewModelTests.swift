@@ -20,17 +20,32 @@ struct SettingsViewModelTests {
         #expect(sut.remoteName == "HomeRemote")
     }
 
-    @Test("forgetDevice uses forget use case and removes tv")
-    func forgetDeviceUsesUseCase() {
+    @Test("forgetPairing uses pairing reset use case and keeps tv")
+    func forgetPairingUsesUseCase() async {
         let repo = MockTVRepository()
         let tv = SamsungTV(name: "Bedroom", ipAddress: "192.168.1.22", macAddress: "AA:BB", model: "Q", type: .tizen)
         repo.savedTVs = [tv]
         let sut = makeViewModel(repository: repo)
 
-        sut.forgetDevice(tv)
+        sut.forgetPairing(tv)
+        try? await Task.sleep(for: .milliseconds(30))
 
+        #expect(repo.pairingForgottenForTVs.count == 1)
+        #expect(repo.savedTVs.count == 1)
+    }
+
+    @Test("removeDevice removes saved tv")
+    func removeDeviceUsesUseCase() async {
+        let repo = MockTVRepository()
+        let tv = SamsungTV(name: "Bedroom", ipAddress: "192.168.1.22", macAddress: "AA:BB", model: "Q", type: .tizen)
+        repo.savedTVs = [tv]
+        let sut = makeViewModel(repository: repo)
+
+        sut.removeDevice(tv)
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(repo.removedTVs.count == 1)
         #expect(repo.savedTVs.isEmpty)
-        #expect(repo.forgottenTokens.contains("AA:BB"))
     }
 
     @Test("saveRemoteName writes through use case")
@@ -47,7 +62,8 @@ struct SettingsViewModelTests {
     private func makeViewModel(repository: MockTVRepository) -> SettingsViewModel {
         SettingsViewModel(
             getSavedTVsUseCase: GetSavedTVsUseCase(repository: repository),
-            forgetDeviceUseCase: ForgetDeviceUseCase(repository: repository),
+            forgetPairingUseCase: ForgetPairingUseCase(repository: repository),
+            removeDeviceUseCase: RemoveDeviceUseCase(repository: repository),
             getRemoteNameUseCase: GetRemoteNameUseCase(repository: repository),
             setRemoteNameUseCase: SetRemoteNameUseCase(repository: repository)
         )
