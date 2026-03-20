@@ -25,57 +25,8 @@ enum SpcCrypto {
         let skPrime: Data
     }
 
-    static func runCryptoTest() {
-        let pin = "1234"
-        let userId = "654321"
-        do {
-            let result = try generateServerHello(userId: userId, pin: pin)
-            print("[TVDBG][CRYPTO] test aesKey=\(result.aesKey.hexString.uppercased())")
-            print("[TVDBG][CRYPTO] test hash=\(result.hash.hexString.uppercased())")
-            print("[TVDBG][CRYPTO] test serverHello[:20]=\(result.serverHello.prefix(20).hexString.uppercased())")
-
-            // Offline test with known values from PIN=7338
-            let ch = "010100000000000000009E000000063635343332311DD2D9D4DA2B8B5E84F9D20170B9AC1792EAE567322336F1D15BA6D74EBCB73022698648A5C389FC31BA62BF043D9E98490039ADD594AFBB2376E4EF02A42C8E150CA3C6F09FA4FDCC29CBC24ACF4E259332D0BAA856DD0E033DF17BC5EB3BA52B12E198919BAA048C302ADBB3B842B5A6DD7755590D7D3FFC119986C121E09603FDE109531BB0F1E98F4E28E3EF8A2AE3493D4D0000000000"
-            let aesKey2 = Data(hexString: "CA5B4E8180679F638B3C1C06A1665043")!
-            let hash2 = Data(hexString: "4FF714E90E0D29042F605390FEB5B210211E0DA3")!
-
-            if let r = try SpcCrypto.parseClientHello(
-                clientHelloHex: ch,
-                hash: hash2,
-                aesKey: aesKey2,
-                userId: "654321"
-            ) {
-                print("[TVDBG][CRYPTO] offline CTX=\(r.ctx.hexString.uppercased())")
-                print("[TVDBG][CRYPTO] offline SKPrime=\(r.skPrime.hexString.uppercased())")
-                print("[TVDBG][CRYPTO] expected CTX=BAFCE82FB62E0253E047ADEF30130069")
-                print("[TVDBG][CRYPTO] match=\(r.ctx.hexString.uppercased() == "BAFCE82FB62E0253E047ADEF30130069")")
-            } else {
-                print("[TVDBG][CRYPTO] offline parseClientHello returned nil")
-            }
-
-            let skPrimeData = Data(hexString: "af23cc641a6ef0a87ee3764bc7857e5d8f23af47")!
-            var input = skPrimeData
-            input.append(0x00)
-            let skPrimeHash16 = Data(sha1(input).prefix(16))
-            print("[TVDBG][CRYPTO] skPrimeHash[:16]: \(skPrimeHash16.hexString.uppercased())")
-            let ctxResult = try aesEcbEncrypt(
-                key: Data(hexString: "6c9474469ddf7578f3e5ad8a4c703d99")!,
-                data: skPrimeHash16
-            )
-            print("[TVDBG][CRYPTO] ctx via ECB:      \(ctxResult.hexString.uppercased())")
-
-            let testKey2 = Data(hexString: "6c9474469ddf7578f3e5ad8a4c703d99")!
-            let testData2 = Data(hexString: "d15174877bcb8ae4f5600e2a47da5271")!
-            let rij2 = SpcRijndael(key: testKey2)
-            _ = rij2.debugEncrypt(testData2)
-        } catch {
-            print("[TVDBG][CRYPTO] test error=\(error)")
-        }
-    }
-
     static func generateServerHello(userId: String, pin: String) throws -> ServerHelloResult {
         let aesKey = Data(sha1(Data(pin.utf8)).prefix(16))
-        print("[TVDBG][SPC] generateServerHello aesKey=\(aesKey.hexString)")
 
         let pubKeyData = Data(hex: SpcKeys.publicKey)
         let encrypted = try aesCbcEncrypt(key: aesKey, iv: Data(count: 16), data: pubKeyData)
@@ -149,8 +100,6 @@ enum SpcCrypto {
         skPrimeInput.append(0x00)
         let skPrimeHash = Data(sha1(skPrimeInput).prefix(16))
         let ctx = applySamyGOKeyTransform(skPrimeHash)
-        print("[TVDBG][SPC] parseClientHello ctx=\(ctx.hexString.uppercased())")
-        print("[TVDBG][SPC] parseClientHello skPrime=\(skPrime.hexString)")
 
         return ClientHelloResult(ctx: ctx, skPrime: skPrime)
     }
@@ -289,8 +238,6 @@ struct SpcRijndael {
     private static let numRounds = 3  // num_rounds[16][16]
     private let ke: [[Int]]
 
-    var keyScheduleCount: Int { ke.count }
-
     init(key: Data) {
         precondition(key.count == 16)
         let rounds = SpcRijndael.numRounds
@@ -338,61 +285,6 @@ struct SpcRijndael {
         }
 
         self.ke = ke
-    }
-
-    func debugEncrypt(_ source: Data) -> Data {
-        let rounds = ke.count - 1
-        let bc = 4
-        let s1 = 1
-        let s2 = 2
-        let s3 = 3
-
-        var t = [Int](repeating: 0, count: bc)
-        for i in 0..<bc {
-            t[i] = ((Int(source[i * 4]) << 24 | Int(source[i * 4 + 1]) << 16 |
-                Int(source[i * 4 + 2]) << 8 | Int(source[i * 4 + 3])) ^ ke[0][i]) & 0xFFFFFFFF
-        }
-        let round0Words = t.map { String(format: "0x%08x", $0) }
-        print("[TVDBG][RIJ] after round 0: \(round0Words)")
-
-        // Trace round 1 lookup for i=0
-        let i0_T1_idx = (t[0] >> 24) & 0xFF
-        let i0_T2_idx = (t[1] >> 16) & 0xFF
-        let i0_T3_idx = (t[2] >> 8) & 0xFF
-        let i0_T4_idx = t[3] & 0xFF
-        let i0_v1 = SpcRijndael.T1[i0_T1_idx]
-        let i0_v2 = SpcRijndael.T2[i0_T2_idx]
-        let i0_v3 = SpcRijndael.T3[i0_T3_idx]
-        let i0_v4 = SpcRijndael.T4[i0_T4_idx]
-        print("[TVDBG][RIJ] i=0: T1[\(i0_T1_idx)]=\(String(format: "0x%08x", i0_v1)) T2[\(i0_T2_idx)]=\(String(format: "0x%08x", i0_v2)) T3[\(i0_T3_idx)]=\(String(format: "0x%08x", i0_v3)) T4[\(i0_T4_idx)]=\(String(format: "0x%08x", i0_v4))")
-        print("[TVDBG][RIJ] i=0: XOR=\(String(format: "0x%08x", (i0_v1 ^ i0_v2 ^ i0_v3 ^ i0_v4) & 0xFFFFFFFF))")
-
-        var a = [Int](repeating: 0, count: bc)
-        for r in 1..<rounds {
-            for i in 0..<bc {
-                a[i] = (
-                    (SpcRijndael.T1[(t[i] >> 24) & 0xFF] ^
-                     SpcRijndael.T2[(t[(i + s1) % bc] >> 16) & 0xFF] ^
-                     SpcRijndael.T3[(t[(i + s2) % bc] >> 8) & 0xFF] ^
-                     SpcRijndael.T4[t[(i + s3) % bc] & 0xFF]) ^ ke[r][i]
-                ) & 0xFFFFFFFF
-            }
-            t = a
-            let roundWords = t.map { String(format: "0x%08x", $0) }
-            print("[TVDBG][RIJ] after round \(r): \(roundWords)")
-        }
-
-        var result = [UInt8](repeating: 0, count: 16)
-        for i in 0..<bc {
-            let tt = ke[rounds][i]
-            result[i * 4] = UInt8((SpcRijndael.S[(t[i] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)
-            result[i * 4 + 1] = UInt8((SpcRijndael.S[(t[(i + s1) % bc] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
-            result[i * 4 + 2] = UInt8((SpcRijndael.S[(t[(i + s2) % bc] >> 8) & 0xFF] ^ (tt >> 8)) & 0xFF)
-            result[i * 4 + 3] = UInt8((SpcRijndael.S[t[(i + s3) % bc] & 0xFF] ^ tt) & 0xFF)
-        }
-        let out = Data(result)
-        print("[TVDBG][RIJ] final result: \(out.hexString.uppercased())")
-        return out
     }
 
     func encrypt(_ source: Data) -> Data {

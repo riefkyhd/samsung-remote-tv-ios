@@ -7,6 +7,7 @@ actor SpcWebSocketClient {
     private var heartbeatTask: Task<Void, Never>?
     private var continuation: AsyncStream<TVConnectionState>.Continuation?
     private var isConnected = false
+    private var lastKeySentAt: Date = .distantPast
 
     func connect(ipAddress: String, remoteName: String) -> AsyncStream<TVConnectionState> {
         _ = remoteName
@@ -49,13 +50,17 @@ actor SpcWebSocketClient {
 
     func sendKey(_ key: RemoteKey, command: String, ctxHex: String, sessionID: String) async throws {
         _ = command
-        guard isConnected, let task else {
-            throw TVError.notConnected
+        guard isConnected, let task else { throw TVError.notConnected }
+        guard let sessionId = Int(sessionID) else { throw TVError.encryptionFailed }
+
+        // Debounce: ignore sends within 200ms of the last one
+        let now = Date()
+        guard now.timeIntervalSince(lastKeySentAt) > 0.2 else {
+            print("[TVDBG][SPC] ws debounce dropped key=\(key.rawValue)")
+            return
         }
-        guard let sessionId = Int(sessionID) else {
-            throw TVError.encryptionFailed
-        }
-        // Send command directly - namespace already confirmed on connect
+        lastKeySentAt = now
+
         let commandMessage = try SpcCrypto.generateCommand(
             ctxUpperHex: ctxHex,
             sessionId: sessionId,

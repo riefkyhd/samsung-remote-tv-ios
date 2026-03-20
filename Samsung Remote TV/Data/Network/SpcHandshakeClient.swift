@@ -52,8 +52,6 @@ actor SpcHandshakeClient {
         preferredStep0: String?,
         preferredStep1: String?
     ) async throws -> PairingOutcome {
-        print("[TVDBG][SPC] completePairing pin=\(pin)")
-        print("[TVDBG][SPC] completePairing called - using requestStep1WithCrypto")
         _ = deviceID
         _ = preferredStep0
         _ = preferredStep1
@@ -96,7 +94,7 @@ actor SpcHandshakeClient {
         let sessionResult = try parseDoubleEncodedStep2(step2Data)
         pendingByIP.remove(tv.ipAddress)
         let ctxUpperHex = parsedHello.ctx.map { String(format: "%02X", $0) }.joined()
-        print("[TVDBG][SPC] pairing complete CTX=\(ctxUpperHex) sessionId=\(sessionResult.sessionId)")
+        print("[TVDBG][SPC] pairing complete CTX=\(ctxUpperHex.prefix(8))... sessionId=\(sessionResult.sessionId)")
 
         let creds = TVUserDefaultsStorage.SpcCredentials(
             ctxUpperHex: ctxUpperHex,
@@ -169,7 +167,6 @@ private extension SpcHandshakeClient {
         deviceID: String,
         pin: String
     ) async throws -> (data: Data, aesKey: Data, hash: Data) {
-        print("[TVDBG][SPC] requestStep1WithCrypto ENTERED")
         let url = pairingURL(ip: ip, step: 1, deviceID: deviceID)
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -180,9 +177,6 @@ private extension SpcHandshakeClient {
         let serverHelloHex = localHello.serverHello.map { String(format: "%02X", $0) }.joined()
         let body = "{\"auth_Data\":{\"auth_type\":\"SPC\",\"GeneratorServerHello\":\"\(serverHelloHex)\"}}"
         req.httpBody = body.data(using: .utf8)
-        print("[TVDBG][SPC] step1 URL: \(url)")
-        print("[TVDBG][SPC] step1 method: \(req.httpMethod ?? "")")
-        print("[TVDBG][SPC] step1 body prefix: \(body.prefix(80))")
 
         let (data, response) = try await session.data(for: req)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0

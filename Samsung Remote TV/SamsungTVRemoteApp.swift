@@ -5,9 +5,6 @@ struct SamsungTVRemoteApp: App {
     @State private var dependencies = AppDependencies()
     @AppStorage("colorScheme") private var colorScheme = "system"
 
-    init() {
-        SpcCrypto.runCryptoTest()
-    }
 
     var body: some Scene {
         WindowGroup {

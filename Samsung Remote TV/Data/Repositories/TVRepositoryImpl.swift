@@ -187,7 +187,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         )
 
         try storage.saveSpcCredentials(outcome.credentials, identifier: identifier)
-        print("[TVDBG][SPC] credentials saved CTX=\(outcome.credentials.ctxUpperHex) sessionId=\(outcome.credentials.sessionId)")
+        print("[TVDBG][SPC] credentials saved CTX=\(outcome.credentials.ctxUpperHex.prefix(8))... sessionId=\(outcome.credentials.sessionId)")
     }
 
     func sendKey(_ key: RemoteKey, command: String) async throws {
@@ -449,7 +449,6 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 transportConnected = false
             }
         }
-        print("[TVDBG][Repo] connectUsingSpc finished everConnected=\(everConnected)")
         return everConnected
     }
 
@@ -499,7 +498,6 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 credentials: credentials,
                 continuation: continuation
             )
-            print("[TVDBG][Repo] connectUsingStoredOrPairingSpc connected=\(connected)")
             if !connected {
                 transportConnected = false
                 storage.deleteSpcCredentials(identifier: identifier)
