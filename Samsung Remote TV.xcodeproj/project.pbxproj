@@ -6,8 +6,29 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C394D4A42F6D16B20022257A /* SmartView.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = C394D4A32F6D16B20022257A /* SmartView.xcframework */; };
+		C394D4A52F6D16B20022257A /* SmartView.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = C394D4A32F6D16B20022257A /* SmartView.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C394D5B32F6D456F0022257A /* BigInt in Frameworks */ = {isa = PBXBuildFile; productRef = C394D5B22F6D456F0022257A /* BigInt */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C394D2972F6D10150022257A /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				C394D4A52F6D16B20022257A /* SmartView.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		C394D1982F6C2D430022257A /* Samsung Remote TV.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Samsung Remote TV.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C394D4A32F6D16B20022257A /* SmartView.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SmartView.xcframework; path = "Samsung Remote TV/Frameworks/SmartView.framework/SmartViewSDK-iOS-Xcode14.1/SmartView.xcframework"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -23,6 +44,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C394D5B32F6D456F0022257A /* BigInt in Frameworks */,
+				C394D4A42F6D16B20022257A /* SmartView.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				C394D19A2F6C2D430022257A /* Samsung Remote TV */,
+				C394D4A22F6D16B20022257A /* Frameworks */,
 				C394D1992F6C2D430022257A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -45,6 +69,14 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		C394D4A22F6D16B20022257A /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C394D4A32F6D16B20022257A /* SmartView.xcframework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -55,6 +87,8 @@
 				C394D1942F6C2D430022257A /* Sources */,
 				C394D1952F6C2D430022257A /* Frameworks */,
 				C394D1962F6C2D430022257A /* Resources */,
+				C394D2972F6D10150022257A /* Embed Frameworks */,
+				C394D2992F6D105B0022257A /* Strip ​Smart​View ​Architectures */,
 			);
 			buildRules = (
 			);
@@ -65,6 +99,7 @@
 			);
 			name = "Samsung Remote TV";
 			packageProductDependencies = (
+				C394D5B22F6D456F0022257A /* BigInt */,
 			);
 			productName = "Samsung Remote TV";
 			productReference = C394D1982F6C2D430022257A /* Samsung Remote TV.app */;
@@ -94,6 +129,9 @@
 			);
 			mainGroup = C394D18F2F6C2D430022257A;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C394D5B12F6D456F0022257A /* XCRemoteSwiftPackageReference "BigInt" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C394D1992F6C2D430022257A /* Products */;
 			projectDirPath = "";
@@ -113,6 +151,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C394D2992F6D105B0022257A /* Strip ​Smart​View ​Architectures */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Strip ​Smart​View ​Architectures";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n\"${PROJECT_DIR}/scripts/strip_smartview_archs.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		C394D1942F6C2D430022257A /* Sources */ = {
@@ -162,7 +221,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -225,7 +284,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -251,8 +310,16 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W44SQXDP84;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSBonjourServices = "_samsungctl._tcp _samsung-multiscreen._tcp";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SamsungTVRemote needs local network access to discover and control your Samsung Smart TV.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,8 +349,16 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = W44SQXDP84;
 				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
+				);
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSBonjourServices = "_samsungctl._tcp _samsung-multiscreen._tcp";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "SamsungTVRemote needs local network access to discover and control your Samsung Smart TV.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -328,6 +403,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C394D5B12F6D456F0022257A /* XCRemoteSwiftPackageReference "BigInt" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/attaswift/BigInt";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C394D5B22F6D456F0022257A /* BigInt */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C394D5B12F6D456F0022257A /* XCRemoteSwiftPackageReference "BigInt" */;
+			productName = BigInt;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C394D1902F6C2D430022257A /* Project object */;
 }
