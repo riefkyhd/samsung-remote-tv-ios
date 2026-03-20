@@ -46,6 +46,19 @@ Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local netw
 - If pairing data is stale, use **Forget Pairing** in Settings and pair again.
 - Use **Remove Device** when you want to clear pairing data and delete the saved TV entry.
 
+## Storage
+
+- Kept in `UserDefaults` (non-sensitive):
+  - saved TVs
+  - remote name
+  - SPC device ID
+- Stored in Keychain (sensitive):
+  - TV token
+  - SPC credentials
+  - SPC variants
+
+Legacy sensitive values previously stored in `UserDefaults` are migrated to Keychain on read and then removed from legacy storage.
+
 ## Logging
 
 Runtime diagnostics are prefixed with `TVDBG`.

@@ -26,6 +26,7 @@ final class AppDependencies {
         let spcHandshakeClient = SpcHandshakeClient()
         let legacyRemoteClient = SamsungLegacyRemoteClient()
         let storage = TVUserDefaultsStorage()
+        let secureStorage = TVSecureStorage()
 
         let scanner = IPRangeScanner(restClient: restClient)
         let bonjour = BonjourDiscovery(restClient: restClient)
@@ -39,6 +40,7 @@ final class AppDependencies {
             spcHandshakeClient: spcHandshakeClient,
             legacyRemoteClient: legacyRemoteClient,
             storage: storage,
+            secureStorage: secureStorage,
             ipRangeScanner: scanner,
             bonjourDiscovery: bonjour,
             ssdpDiscovery: ssdp

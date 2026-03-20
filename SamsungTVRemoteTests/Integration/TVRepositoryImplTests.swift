@@ -44,7 +44,8 @@ struct TVRepositoryImplTests {
         let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.forgetPairing")!
         defaults.removePersistentDomain(forName: "TVRepositoryImplTests.forgetPairing")
         let storage = TVUserDefaultsStorage(userDefaults: defaults)
-        let repository = makeRepository(storage: storage)
+        let secureStorage = TVSecureStorage(service: "TVRepositoryImplTests.forgetPairing.secure")
+        let repository = makeRepository(storage: storage, secureStorage: secureStorage)
         let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
 
         try repository.saveTV(tv)
@@ -57,6 +58,9 @@ struct TVRepositoryImplTests {
         #expect(storage.loadToken(macAddress: tv.macAddress) == nil)
         #expect(storage.loadSpcCredentials(identifier: tv.macAddress) == nil)
         #expect(storage.loadSpcVariants(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadToken(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadSpcCredentials(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadSpcVariants(identifier: tv.macAddress) == nil)
         #expect(try repository.getSavedTVs().count == 1)
     }
 
@@ -65,7 +69,8 @@ struct TVRepositoryImplTests {
         let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.removeDevice")!
         defaults.removePersistentDomain(forName: "TVRepositoryImplTests.removeDevice")
         let storage = TVUserDefaultsStorage(userDefaults: defaults)
-        let repository = makeRepository(storage: storage)
+        let secureStorage = TVSecureStorage(service: "TVRepositoryImplTests.removeDevice.secure")
+        let repository = makeRepository(storage: storage, secureStorage: secureStorage)
         let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
 
         try repository.saveTV(tv)
@@ -78,10 +83,40 @@ struct TVRepositoryImplTests {
         #expect(storage.loadToken(macAddress: tv.macAddress) == nil)
         #expect(storage.loadSpcCredentials(identifier: tv.macAddress) == nil)
         #expect(storage.loadSpcVariants(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadToken(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadSpcCredentials(identifier: tv.macAddress) == nil)
+        #expect(secureStorage.loadSpcVariants(identifier: tv.macAddress) == nil)
         #expect(try repository.getSavedTVs().isEmpty)
     }
 
-    private func makeRepository(storage: TVUserDefaultsStorage) -> TVRepositoryImpl {
+    @Test("Sensitive storage migrates legacy values on read")
+    func sensitiveStorageMigratesLegacyValues() throws {
+        let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.migration")!
+        defaults.removePersistentDomain(forName: "TVRepositoryImplTests.migration")
+        let legacy = TVUserDefaultsStorage(userDefaults: defaults)
+        let secure = TVSecureStorage(service: "TVRepositoryImplTests.migration.secure")
+        let sensitive = TVSensitiveStorage(legacy: legacy, secure: secure)
+        let identifier = "AA:BB:CC:DD:EE:FF"
+        legacy.saveToken("legacyToken", macAddress: identifier)
+        try legacy.saveSpcCredentials(.init(ctxUpperHex: "ABCD", sessionId: 1), identifier: identifier)
+        try legacy.saveSpcVariants(.init(step0: "v0", step1: "v1"), identifier: identifier)
+
+        let token = sensitive.loadToken(identifier: identifier)
+        let creds = sensitive.loadSpcCredentials(identifier: identifier)
+        let variants = sensitive.loadSpcVariants(identifier: identifier)
+
+        #expect(token == "legacyToken")
+        #expect(creds?.sessionId == 1)
+        #expect(variants?.step0 == "v0")
+        #expect(legacy.loadToken(macAddress: identifier) == nil)
+        #expect(legacy.loadSpcCredentials(identifier: identifier) == nil)
+        #expect(legacy.loadSpcVariants(identifier: identifier) == nil)
+        #expect(secure.loadToken(identifier: identifier) == "legacyToken")
+        #expect(secure.loadSpcCredentials(identifier: identifier)?.sessionId == 1)
+        #expect(secure.loadSpcVariants(identifier: identifier)?.step0 == "v0")
+    }
+
+    private func makeRepository(storage: TVUserDefaultsStorage, secureStorage: TVSecureStorage) -> TVRepositoryImpl {
         let restClient = SamsungTVRestClient()
         return TVRepositoryImpl(
             restClient: restClient,
@@ -91,6 +126,7 @@ struct TVRepositoryImplTests {
             spcHandshakeClient: SpcHandshakeClient(),
             legacyRemoteClient: SamsungLegacyRemoteClient(),
             storage: storage,
+            secureStorage: secureStorage,
             ipRangeScanner: IPRangeScanner(restClient: restClient),
             bonjourDiscovery: BonjourDiscovery(restClient: restClient),
             ssdpDiscovery: SSDPDiscovery(restClient: restClient)

@@ -16,6 +16,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private let spcHandshakeClient: SpcHandshakeClient
     private let legacyRemoteClient: SamsungLegacyRemoteClient
     private let storage: TVUserDefaultsStorage
+    private let sensitiveStorage: TVSensitiveStorage
     private let ipRangeScanner: IPRangeScanner
     private let bonjourDiscovery: BonjourDiscovery
     private let ssdpDiscovery: SSDPDiscovery
@@ -33,6 +34,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         spcHandshakeClient: SpcHandshakeClient,
         legacyRemoteClient: SamsungLegacyRemoteClient,
         storage: TVUserDefaultsStorage,
+        secureStorage: TVSecureStorage,
         ipRangeScanner: IPRangeScanner,
         bonjourDiscovery: BonjourDiscovery,
         ssdpDiscovery: SSDPDiscovery
@@ -44,6 +46,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         self.spcHandshakeClient = spcHandshakeClient
         self.legacyRemoteClient = legacyRemoteClient
         self.storage = storage
+        self.sensitiveStorage = TVSensitiveStorage(legacy: storage, secure: secureStorage)
         self.ipRangeScanner = ipRangeScanner
         self.bonjourDiscovery = bonjourDiscovery
         self.ssdpDiscovery = ssdpDiscovery
@@ -178,15 +181,20 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         defer { spcPairingInProgress = false }
 
         let identifier = tokenIdentifier(for: tv)
+        let variants = sensitiveStorage.loadSpcVariants(identifier: identifier)
         let outcome = try await spcHandshakeClient.completePairing(
             tv: tv,
             pin: pin,
             deviceID: storage.loadOrCreateSpcDeviceID(),
-            preferredStep0: nil,
-            preferredStep1: nil
+            preferredStep0: variants?.step0,
+            preferredStep1: variants?.step1
         )
 
-        try storage.saveSpcCredentials(outcome.credentials, identifier: identifier)
+        sensitiveStorage.saveSpcCredentials(outcome.credentials, identifier: identifier)
+        sensitiveStorage.saveSpcVariants(
+            .init(step0: outcome.step0Variant, step1: outcome.step1Variant),
+            identifier: identifier
+        )
         print("[TVDBG][SPC] credentials saved CTX=\(outcome.credentials.ctxUpperHex.prefix(8))... sessionId=\(outcome.credentials.sessionId)")
     }
 
@@ -204,7 +212,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             if let active = activeSpcCredentials {
                 creds = active
             } else if let tv = currentTV,
-                      let stored = storage.loadSpcCredentials(identifier: tokenIdentifier(for: tv)) {
+                      let stored = sensitiveStorage.loadSpcCredentials(identifier: tokenIdentifier(for: tv)) {
                 // Race fallback: restore active credentials from persisted SPC credentials.
                 creds = stored
                 activeSpcCredentials = stored
@@ -373,11 +381,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             return false
         }
         let tokenKey = tokenIdentifier(for: tv)
-        let token = storage.loadToken(macAddress: tokenKey)
+        let token = sensitiveStorage.loadToken(identifier: tokenKey)
         print("[TVDBG][Repo] try websocket ip=\(tv.ipAddress) token=\(token != nil)")
-        await webSocketClient.setTokenHandler { [storage] newToken in
+        await webSocketClient.setTokenHandler { [sensitiveStorage] newToken in
             Task { @MainActor in
-                storage.saveToken(newToken, macAddress: tokenKey)
+                sensitiveStorage.saveToken(newToken, identifier: tokenKey)
             }
         }
 
@@ -520,7 +528,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
         let identifier = tokenIdentifier(for: tv)
-        if let credentials = storage.loadSpcCredentials(identifier: identifier) {
+        if let credentials = sensitiveStorage.loadSpcCredentials(identifier: identifier) {
             let connected = await connectUsingSpc(
                 tv: tv,
                 remoteName: remoteName,
@@ -535,19 +543,19 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             // into fresh PIN pairing in this same connect attempt.
             transportConnected = false
             activeSpcCredentials = nil
-            storage.deleteSpcCredentials(identifier: identifier)
-            storage.deleteSpcVariants(identifier: identifier)
+            sensitiveStorage.deleteSensitiveData(identifier: identifier)
         }
 
         do {
             let deviceID = storage.loadOrCreateSpcDeviceID()
+            let variants = sensitiveStorage.loadSpcVariants(identifier: identifier)
             spcPairingInProgress = true
             continuation.yield(.pairing(countdown: 30))
             try await spcHandshakeClient.startPairing(
                 tv: tv,
                 deviceID: deviceID,
-                preferredStep0: nil,
-                preferredStep1: nil
+                preferredStep0: variants?.step0,
+                preferredStep1: variants?.step1
             )
             continuation.yield(.pinRequired(countdown: 60))
             return false
@@ -583,9 +591,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         }
 
         for identifier in identifiers where !identifier.isEmpty {
-            storage.deleteToken(macAddress: identifier)
-            storage.deleteSpcCredentials(identifier: identifier)
-            storage.deleteSpcVariants(identifier: identifier)
+            sensitiveStorage.deleteSensitiveData(identifier: identifier)
         }
         activeSpcCredentials = nil
         spcPairingInProgress = false
