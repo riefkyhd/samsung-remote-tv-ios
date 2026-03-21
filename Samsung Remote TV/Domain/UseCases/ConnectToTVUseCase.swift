@@ -51,7 +51,15 @@ struct ConnectToTVUseCase: Sendable {
                         : slowRetryDelay
                     retryCount += 1
                     if sawError || !connectedThisPass {
-                        print("[TVDBG][Repo] reconnect in \(delay)s (attempt \(retryCount))")
+                        DiagnosticsLogger.log(
+                            .reconnect,
+                            "scheduled reconnect attempt",
+                            metadata: [
+                                "delaySeconds": String(delay),
+                                "attempt": String(retryCount),
+                                "reason": sawError ? "error" : "noConnectedState"
+                            ]
+                        )
                     }
                     try? await Task.sleep(for: .seconds(delay))
                 }

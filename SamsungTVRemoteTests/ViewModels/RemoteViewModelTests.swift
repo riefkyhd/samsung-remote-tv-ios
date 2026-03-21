@@ -186,6 +186,39 @@ struct RemoteViewModelTests {
         #expect(vm.errorMessage.contains("30 seconds"))
     }
 
+    @Test("Diagnostics capture connect-stream error context")
+    func diagnosticsCaptureConnectErrorContext() async {
+        let repo = MockTVRepository()
+        repo.connectionStates = [.connecting, .error(.notConnected)]
+        let vm = makeViewModel(repository: repo)
+
+        vm.connect()
+        try? await Task.sleep(for: .milliseconds(40))
+
+        #expect(vm.lastErrorSummary?.contains("connect_stream") == true)
+        #expect(vm.diagnosticsEvents.contains(where: { $0.contains("[error]") }))
+    }
+
+    @Test("Diagnostics include capability resolution details")
+    func diagnosticsIncludeCapabilityResolutionDetails() {
+        let vm = makeViewModel()
+
+        #expect(vm.diagnosticsEvents.contains(where: { $0.contains("[capabilities] resolved tv capabilities") }))
+        #expect(vm.diagnosticsSummary.contains("Protocol:"))
+    }
+
+    @Test("Diagnostics events do not include raw PIN values")
+    func diagnosticsDoNotLeakRawPin() async {
+        let vm = makeViewModel()
+        vm.pinCode = "1234"
+
+        vm.submitPin()
+        try? await Task.sleep(for: .milliseconds(60))
+
+        let serialized = vm.diagnosticsEvents.joined(separator: " ")
+        #expect(!serialized.contains("1234"))
+    }
+
     private func makeViewModel(
         repository: MockTVRepository = MockTVRepository(),
         throwOnSend: Bool = false,

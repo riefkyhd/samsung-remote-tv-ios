@@ -24,6 +24,8 @@ final class RemoteViewModel {
     var isProbingVariants = false
     var capabilities: TVCapabilities { tv.capabilities }
     var connectionAttemptCount = 0
+    var diagnosticsEvents: [String] = []
+    var lastErrorSummary: String?
 
     private let connectToTVUseCase: ConnectToTVUseCase
     private let sendRemoteKeyUseCase: SendRemoteKeyUseCase
@@ -53,6 +55,18 @@ final class RemoteViewModel {
         self.pairWithEncryptedTVUseCase = pairWithEncryptedTVUseCase
         self.disconnectTVUseCase = disconnectTVUseCase
         self.launchTVAppUseCase = launchTVAppUseCase
+        recordDiagnostics(
+            category: .capabilities,
+            message: "resolved tv capabilities",
+            metadata: [
+                "protocol": tv.protocolType.rawValue,
+                "generation": TVCapabilities.resolveGeneration(for: tv).rawValue,
+                "wakeOnLan": capabilities.wakeOnLan ? "true" : "false",
+                "appLaunch": capabilities.appLaunch ? "true" : "false",
+                "trackpad": capabilities.trackpad ? "true" : "false",
+                "encryptedPairing": capabilities.encryptedPairing ? "true" : "false"
+            ]
+        )
     }
 
     convenience init(tv: SamsungTV, dependencies: AppDependencies) {
@@ -75,18 +89,33 @@ final class RemoteViewModel {
         hasConfirmedControl = false
         connectionAttemptCount = 0
         isProbingVariants = (tv.protocolType == .encrypted)
+        recordDiagnostics(
+            category: .lifecycle,
+            message: "connect requested",
+            metadata: [
+                "ip": tv.ipAddress,
+                "protocol": tv.protocolType.rawValue
+            ]
+        )
         connectionTask = Task {
             for await state in connectToTVUseCase.executeWithReconnection(tv: tv) {
                 connectionState = state
                 if case .connecting = state {
                     connectionAttemptCount += 1
+                    recordDiagnostics(
+                        category: .reconnect,
+                        message: "connecting state emitted",
+                        metadata: ["attempt": String(connectionAttemptCount)]
+                    )
                 }
                 if case .disconnected = state {
                     hasConfirmedControl = false
                     isProbingVariants = false
+                    recordDiagnostics(category: .lifecycle, message: "state=disconnected")
                 }
                 if case .pairing = state {
                     isProbingVariants = true
+                    recordDiagnostics(category: .pairing, message: "state=pairing")
                 }
                 if case .pinRequired(let countdown) = state {
                     isProbingVariants = false
@@ -94,6 +123,11 @@ final class RemoteViewModel {
                     pinCode = ""
                     pinErrorMessage = nil
                     showPinSheet = true
+                    recordDiagnostics(
+                        category: .pairing,
+                        message: "pin required",
+                        metadata: ["countdown": String(countdown)]
+                    )
                     startPinCountdown()
                 }
                 if case .error(let error) = state {
@@ -101,12 +135,13 @@ final class RemoteViewModel {
                     hasConfirmedControl = false
                     showError = true
                     errorMessage = userFriendlyMessage(for: error)
-                    print("[TVDBG][UI][ERROR] \(errorMessage)")
+                    recordError(context: "connect_stream", error: errorMessage)
                 }
                 if case .connected = state {
                     isProbingVariants = false
                     // Keep this false until the first successful command/app action confirms control path.
                     hasConfirmedControl = false
+                    recordDiagnostics(category: .lifecycle, message: "state=connected")
                 }
             }
         }
@@ -122,6 +157,7 @@ final class RemoteViewModel {
         connectionState = .disconnected
         hasConfirmedControl = false
         connectionAttemptCount = 0
+        recordDiagnostics(category: .lifecycle, message: "disconnect requested")
     }
 
     func handleRemoteDisappear(shouldDisconnect: Bool) {
@@ -143,6 +179,7 @@ final class RemoteViewModel {
                 } else {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
+                recordError(context: "send_key", error: errorMessage)
             }
         }
     }
@@ -161,6 +198,7 @@ final class RemoteViewModel {
                 } else {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
+                recordError(context: "long_press_power", error: errorMessage)
             }
         }
     }
@@ -189,6 +227,7 @@ final class RemoteViewModel {
                 } else {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
+                recordError(context: "load_quick_launch", error: errorMessage)
             }
         }
     }
@@ -197,6 +236,7 @@ final class RemoteViewModel {
         guard capabilities.appLaunch else {
             showError = true
             errorMessage = capabilityMessage(for: .appLaunch)
+            recordError(context: "launch_app_capability_block", error: errorMessage)
             return
         }
         guard canSendCommands else { return }
@@ -211,6 +251,7 @@ final class RemoteViewModel {
                 } else {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
+                recordError(context: "launch_app", error: errorMessage)
             }
         }
     }
@@ -219,6 +260,7 @@ final class RemoteViewModel {
         guard capabilities.wakeOnLan else {
             showError = true
             errorMessage = capabilityMessage(for: .wakeOnLan)
+            recordError(context: "wake_capability_block", error: errorMessage)
             return
         }
         Task {
@@ -231,6 +273,7 @@ final class RemoteViewModel {
                 } else {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
+                recordError(context: "wake_tv", error: errorMessage)
             }
         }
     }
@@ -310,7 +353,7 @@ final class RemoteViewModel {
             showError = true
             errorMessage = "Enter PIN shown on TV."
             pinErrorMessage = errorMessage
-            print("[TVDBG][UI][ERROR] \(errorMessage)")
+            recordError(context: "submit_pin_validation", error: errorMessage)
             return
         }
 
@@ -324,6 +367,7 @@ final class RemoteViewModel {
                 // Re-establish the live transport stream via repository connect path.
                 connectionState = .connecting
                 hasConfirmedControl = false
+                recordDiagnostics(category: .pairing, message: "pin accepted; reconnecting transport")
                 connect()
             } catch {
                 showError = true
@@ -333,7 +377,7 @@ final class RemoteViewModel {
                     errorMessage = "Could not connect. Please make sure the TV is on."
                 }
                 pinErrorMessage = errorMessage
-                print("[TVDBG][UI][ERROR] \(errorMessage)")
+                recordError(context: "submit_pin", error: errorMessage)
             }
         }
     }
@@ -361,9 +405,55 @@ final class RemoteViewModel {
                 showError = true
                 errorMessage = TVError.pinTimeout.localizedDescription
                 pinErrorMessage = nil
+                recordError(context: "pin_countdown_timeout", error: errorMessage)
                 disconnect()
             }
         }
+    }
+
+    var diagnosticsSummary: String {
+        let generation = TVCapabilities.resolveGeneration(for: tv).rawValue
+        return "Protocol: \(tv.protocolType.rawValue) | Generation: \(generation) | Attempts: \(connectionAttemptCount)"
+    }
+
+    private func recordDiagnostics(
+        category: DiagnosticsCategory,
+        message: String,
+        metadata: [String: String] = [:]
+    ) {
+        DiagnosticsLogger.log(category, message, metadata: metadata)
+        let event = formatDiagnosticsEvent(category: category, message: message, metadata: metadata)
+        diagnosticsEvents.append(event)
+        if diagnosticsEvents.count > 20 {
+            diagnosticsEvents.removeFirst(diagnosticsEvents.count - 20)
+        }
+    }
+
+    private func recordError(context: String, error: String) {
+        lastErrorSummary = "\(context): \(error)"
+        recordDiagnostics(
+            category: .error,
+            message: "ui error",
+            metadata: [
+                "context": context,
+                "message": error
+            ]
+        )
+    }
+
+    private func formatDiagnosticsEvent(
+        category: DiagnosticsCategory,
+        message: String,
+        metadata: [String: String]
+    ) -> String {
+        let metadataText = metadata
+            .sorted(by: { $0.key < $1.key })
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: " ")
+        if metadataText.isEmpty {
+            return "[\(category.rawValue)] \(message)"
+        }
+        return "[\(category.rawValue)] \(message) \(metadataText)"
     }
 
     private func userFriendlyMessage(for error: TVError) -> String {

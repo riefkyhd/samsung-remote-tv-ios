@@ -222,7 +222,15 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             let task = Task {
                 let sessionID = await connectionCoordinator.beginConnect(tv: tv)
                 let remoteName = storage.loadRemoteName()
-                print("[TVDBG][Repo] connect start ip=\(tv.ipAddress) model=\(tv.model)")
+                DiagnosticsLogger.log(
+                    .lifecycle,
+                    "connect start",
+                    metadata: [
+                        "ip": tv.ipAddress,
+                        "model": tv.model,
+                        "protocol": tv.protocolType.rawValue
+                    ]
+                )
 
                 switch tv.protocolType {
                 case .modern:
@@ -234,7 +242,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                     )
 
                     if !wsConnected {
-                        print("[TVDBG][Repo] websocket not usable, fallback to legacy ip=\(tv.ipAddress)")
+                        DiagnosticsLogger.log(
+                            .protocolSelection,
+                            "websocket unavailable; falling back to legacy",
+                            metadata: ["ip": tv.ipAddress]
+                        )
                         await webSocketClient.disconnect()
                         _ = await connectUsingLegacy(
                             tv: tv,
@@ -243,7 +255,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                             continuation: continuation
                         )
                     } else {
-                        print("[TVDBG][Repo] websocket selected ip=\(tv.ipAddress)")
+                        DiagnosticsLogger.log(
+                            .protocolSelection,
+                            "websocket selected",
+                            metadata: ["ip": tv.ipAddress]
+                        )
                     }
 
                 case .encrypted:
@@ -328,7 +344,14 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
             .init(step0: outcome.step0Variant, step1: outcome.step1Variant),
             identifier: identifier
         )
-        print("[TVDBG][SPC] credentials saved CTX=\(outcome.credentials.ctxUpperHex.prefix(8))... sessionId=\(outcome.credentials.sessionId)")
+        DiagnosticsLogger.log(
+            .pairing,
+            "spc credentials saved",
+            metadata: [
+                "tv": DiagnosticsLogger.redactIdentifier(tv.ipAddress),
+                "sessionId": String(outcome.credentials.sessionId)
+            ]
+        )
     }
 
     func sendKey(_ key: RemoteKey, command: String) async throws {
@@ -515,17 +538,32 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         }
         let shouldSkip = !(await connectionCoordinator.shouldDisconnectOnConnectTermination(session: sessionID))
         guard !shouldSkip else {
-            print("[TVDBG][WS] Skipping reconnect — SPC pairing in progress")
+            DiagnosticsLogger.log(
+                .pairing,
+                "skip websocket reconnect while pairing is active",
+                metadata: ["ip": tv.ipAddress]
+            )
             return false
         }
         await connectionCoordinator.setActiveTransport(.webSocket, session: sessionID)
         guard await isTVReachable(ip: tv.ipAddress) else {
-            print("[TVDBG][Repo] tv not reachable ip=\(tv.ipAddress) skip websocket")
+            DiagnosticsLogger.log(
+                .protocolSelection,
+                "tv not reachable; skip websocket attempt",
+                metadata: ["ip": tv.ipAddress]
+            )
             return false
         }
         let tokenKey = tokenIdentifier(for: tv)
         let token = sensitiveStorage.loadToken(identifier: tokenKey)
-        print("[TVDBG][Repo] try websocket ip=\(tv.ipAddress) token=\(token != nil)")
+        DiagnosticsLogger.log(
+            .protocolSelection,
+            "trying websocket transport",
+            metadata: [
+                "ip": tv.ipAddress,
+                "hasToken": token != nil ? "true" : "false"
+            ]
+        )
         await webSocketClient.setTokenHandler { [sensitiveStorage] newToken in
             Task { @MainActor in
                 sensitiveStorage.saveToken(newToken, identifier: tokenKey)
@@ -584,7 +622,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         emitErrors: Bool = true
     ) async -> Bool {
         await connectionCoordinator.setActiveTransport(.legacy, session: sessionID)
-        print("[TVDBG][Repo] try legacy ip=\(tv.ipAddress)")
+        DiagnosticsLogger.log(
+            .protocolSelection,
+            "trying legacy transport",
+            metadata: ["ip": tv.ipAddress]
+        )
         let stream = await legacyRemoteClient.connect(to: tv, remoteName: remoteName)
         var connected = false
         for await state in stream {
@@ -606,7 +648,14 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 await connectionCoordinator.markDisconnected(session: sessionID)
             }
         }
-        print("[TVDBG][Repo] legacy result ip=\(tv.ipAddress) connected=\(connected)")
+        DiagnosticsLogger.log(
+            .protocolSelection,
+            "legacy transport result",
+            metadata: [
+                "ip": tv.ipAddress,
+                "connected": connected ? "true" : "false"
+            ]
+        )
         return connected
     }
 
@@ -619,7 +668,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     ) async -> Bool {
         await connectionCoordinator.setActiveTransport(.spc, session: sessionID)
         await connectionCoordinator.setActiveSpcCredentials(credentials, session: sessionID)
-        print("[TVDBG][Repo] try spc ip=\(tv.ipAddress)")
+        DiagnosticsLogger.log(
+            .protocolSelection,
+            "trying spc transport",
+            metadata: ["ip": tv.ipAddress]
+        )
         let stream = await spcWebSocketClient.connect(ipAddress: tv.ipAddress, remoteName: remoteName)
         var everConnected = false
 
@@ -650,7 +703,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
         await connectionCoordinator.setActiveTransport(.smartView, session: sessionID)
-        print("[TVDBG][Repo] try smartview ip=\(tv.ipAddress)")
+        DiagnosticsLogger.log(
+            .protocolSelection,
+            "trying smartview transport",
+            metadata: ["ip": tv.ipAddress]
+        )
 
         let stream = smartViewClient.connect(to: tv, remoteName: remoteName)
 

@@ -251,6 +251,34 @@ struct RemoteView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+#if DEBUG
+            DisclosureGroup("Diagnostics") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(viewModel.diagnosticsSummary)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                    if let lastErrorSummary = viewModel.lastErrorSummary {
+                        Text("Last Error: \(lastErrorSummary)")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                    } else {
+                        Text("Last Error: none")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    ForEach(Array(viewModel.diagnosticsEvents.suffix(8).enumerated()), id: \.offset) { _, event in
+                        Text(event)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(.top, 6)
+            }
+            .tint(.white)
+#endif
         }
         .padding(16)
         .frame(maxWidth: horizontalSizeClass == .regular ? 280 : .infinity)
