@@ -57,7 +57,8 @@ struct RemoteView: View {
                     Circle()
                         .fill(viewModel.connectionColor)
                         .frame(width: 10, height: 10)
-                        .accessibilityLabel(viewModel.connectionLabel)
+                        .accessibilityLabel(L10n.text("remote.connection_status", "Connection Status"))
+                        .accessibilityValue(viewModel.connectionLabel)
 
                     Button {
                         isSettingsPresented = true
@@ -65,6 +66,8 @@ struct RemoteView: View {
                         Image(systemName: "gearshape")
                             .foregroundStyle(.white)
                     }
+                    .accessibilityLabel(L10n.text("common.settings", "Settings"))
+                    .accessibilityHint(L10n.text("remote.settings_hint", "Opens app settings without disconnecting the remote session."))
                 }
             }
         }
@@ -101,11 +104,11 @@ struct RemoteView: View {
     private var remoteBody: some View {
         VStack(spacing: 14) {
             HStack(spacing: 18) {
-                RemoteCircleButton(icon: "house.fill", label: "Home") {
+                RemoteCircleButton(icon: "house.fill", label: L10n.text("remote.home", "Home")) {
                     haptic(.light)
                     viewModel.sendKey(.KEY_HOME)
                 }
-                RemoteCircleButton(icon: "rectangle.on.rectangle", label: "Source") {
+                RemoteCircleButton(icon: "rectangle.on.rectangle", label: L10n.text("remote.source", "Source")) {
                     haptic(.light)
                     viewModel.sendKey(.KEY_SOURCE)
                 }
@@ -119,6 +122,8 @@ struct RemoteView: View {
                         .overlay(Image(systemName: "power").foregroundStyle(.red))
                         .frame(width: 56, height: 56)
                 }
+                .accessibilityLabel(L10n.text("remote.power", "Power"))
+                .accessibilityHint(L10n.text("remote.power_hint", "Tap to toggle power. Long press to send power off command."))
                 .simultaneousGesture(
                     LongPressGesture(minimumDuration: 0.8)
                         .onEnded { _ in
@@ -129,9 +134,9 @@ struct RemoteView: View {
             }
 
             if viewModel.capabilities.trackpad {
-                Picker("Mode", selection: $showTrackpad) {
-                    Text("Remote").tag(false)
-                    Text("Trackpad").tag(true)
+                Picker(L10n.text("remote.mode_picker", "Mode"), selection: $showTrackpad) {
+                    Text(L10n.text("remote.mode_remote", "Remote")).tag(false)
+                    Text(L10n.text("remote.mode_trackpad", "Trackpad")).tag(true)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 8)
@@ -155,8 +160,8 @@ struct RemoteView: View {
             }
 
             HStack(spacing: 12) {
-                softButton("Return") { viewModel.sendKey(.KEY_RETURN) }
-                softButton("Exit") { viewModel.sendKey(.KEY_EXIT) }
+                softButton(L10n.text("remote.return", "Return")) { viewModel.sendKey(.KEY_RETURN) }
+                softButton(L10n.text("remote.exit", "Exit")) { viewModel.sendKey(.KEY_EXIT) }
             }
 
             HStack(alignment: .top, spacing: 24) {
@@ -197,7 +202,7 @@ struct RemoteView: View {
                 NumberPad { key in viewModel.sendKey(key) }
                     .padding(.top, 8)
             } label: {
-                Text("Number Pad")
+                Text(L10n.text("remote.number_pad", "Number Pad"))
                     .font(.headline)
                     .foregroundStyle(.white)
             }
@@ -213,20 +218,20 @@ struct RemoteView: View {
             }
 
             HStack(spacing: 8) {
-                softButton("Menu", style: .light) { viewModel.sendKey(.KEY_MENU) }
-                softButton("Guide", style: .light) { viewModel.sendKey(.KEY_GUIDE) }
+                softButton(L10n.text("remote.menu", "Menu"), style: .light) { viewModel.sendKey(.KEY_MENU) }
+                softButton(L10n.text("remote.guide", "Guide"), style: .light) { viewModel.sendKey(.KEY_GUIDE) }
             }
             HStack(spacing: 8) {
-                softButton("Tools", style: .light) { viewModel.sendKey(.KEY_TOOLS) }
-                softButton("Info", style: .light) { viewModel.sendKey(.KEY_INFO) }
+                softButton(L10n.text("remote.tools", "Tools"), style: .light) { viewModel.sendKey(.KEY_TOOLS) }
+                softButton(L10n.text("remote.info", "Info"), style: .light) { viewModel.sendKey(.KEY_INFO) }
             }
 
             HStack(spacing: 8) {
-                softButton("Hub", style: .light) { viewModel.sendKey(.KEY_SMARTHUB) }
-                softButton("HDMI", style: .light) { viewModel.sendKey(.KEY_HDMI) }
+                softButton(L10n.text("remote.hub", "Hub"), style: .light) { viewModel.sendKey(.KEY_SMARTHUB) }
+                softButton(L10n.text("remote.hdmi", "HDMI"), style: .light) { viewModel.sendKey(.KEY_HDMI) }
             }
 
-            Button("Quick Launch") {
+            Button(L10n.text("remote.quick_launch", "Quick Launch")) {
                 viewModel.isAppSheetPresented = true
             }
             .buttonStyle(.borderedProminent)
@@ -239,7 +244,7 @@ struct RemoteView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button("Wake TV") {
+            Button(L10n.text("remote.wake_tv", "Wake TV")) {
                 viewModel.wakeTV()
             }
             .buttonStyle(.bordered)
@@ -253,17 +258,17 @@ struct RemoteView: View {
             }
 
 #if DEBUG
-            DisclosureGroup("Diagnostics") {
+            DisclosureGroup(L10n.text("remote.diagnostics", "Diagnostics")) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(viewModel.diagnosticsSummary)
                         .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
                     if let lastErrorSummary = viewModel.lastErrorSummary {
-                        Text("Last Error: \(lastErrorSummary)")
+                        Text("\(L10n.text("remote.last_error", "Last Error")): \(lastErrorSummary)")
                             .font(.caption2)
                             .foregroundStyle(.orange)
                     } else {
-                        Text("Last Error: none")
+                        Text("\(L10n.text("remote.last_error", "Last Error")): \(L10n.text("remote.none", "none"))")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
@@ -312,9 +317,9 @@ struct RemoteView: View {
         NavigationStack {
             VStack(spacing: 18) {
                 VStack(spacing: 6) {
-                    Text("Enter TV PIN")
+                    Text(L10n.text("remote.pin_title", "Enter TV PIN"))
                         .font(.title3.weight(.semibold))
-                    Text("Type the PIN shown on your Samsung TV.")
+                    Text(L10n.text("remote.pin_subtitle", "Type the PIN shown on your Samsung TV."))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -322,7 +327,7 @@ struct RemoteView: View {
                 if viewModel.isProbingVariants {
                     HStack(spacing: 8) {
                         ProgressView()
-                        Text("Detecting protocol variant…")
+                        Text(L10n.text("remote.pin_detecting_variant", "Detecting protocol variant…"))
                             .font(.subheadline)
                     }
                 }
@@ -356,7 +361,7 @@ struct RemoteView: View {
                 }
 
                 HStack {
-                    Text("Time remaining")
+                    Text(L10n.text("remote.pin_time_remaining", "Time remaining"))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -374,13 +379,13 @@ struct RemoteView: View {
                 if viewModel.isSubmittingPin {
                     HStack(spacing: 10) {
                         ProgressView()
-                        Text("Submitting PIN…")
+                        Text(L10n.text("remote.pin_submitting", "Submitting PIN…"))
                             .font(.subheadline)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
                     VStack(spacing: 10) {
-                        Button("Confirm PIN") {
+                        Button(L10n.text("remote.pin_confirm", "Confirm PIN")) {
                             isPinInputActive = false
                             viewModel.submitPin()
                         }
@@ -388,7 +393,7 @@ struct RemoteView: View {
                         .frame(maxWidth: .infinity)
                         .disabled(viewModel.pinCode.count < 4 || viewModel.isProbingVariants)
 
-                        Button("Cancel Pairing", role: .destructive) {
+                        Button(L10n.text("remote.pin_cancel_pairing", "Cancel Pairing"), role: .destructive) {
                             isPinInputActive = false
                             viewModel.cancelPinEntry()
                         }
@@ -397,7 +402,7 @@ struct RemoteView: View {
                     }
                 }
 
-                Text("Make sure the TV is turned on while pairing.")
+                Text(L10n.text("remote.pin_tip", "Make sure the TV is turned on while pairing."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -405,7 +410,7 @@ struct RemoteView: View {
                 Spacer(minLength: 0)
             }
             .padding(20)
-            .navigationTitle("PIN Pairing")
+            .navigationTitle(L10n.text("remote.pin_navigation_title", "PIN Pairing"))
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 Task {
@@ -430,7 +435,7 @@ struct RemoteView: View {
                     .font(.caption)
                     .foregroundStyle(.primary)
                 Spacer()
-                Button("Retry") {
+                Button(L10n.text("remote.retry", "Retry")) {
                     viewModel.connect()
                 }
                 .font(.caption.bold())
@@ -467,7 +472,7 @@ struct RemoteView: View {
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
-                Button("Retry Connection") {
+                Button(L10n.text("remote.retry_connection", "Retry Connection")) {
                     viewModel.connect()
                 }
                 .buttonStyle(.borderedProminent)
@@ -549,4 +554,14 @@ private struct HiddenPINInput: UIViewRepresentable {
         tv: SamsungTV(name: "Living Room TV", ipAddress: "192.168.1.12", macAddress: "AA:BB:CC:DD:EE:FF", model: "QLED", type: .tizen, protocolType: .modern),
         dependencies: AppDependencies()
     ))
+    .environment(AppDependencies())
+}
+
+#Preview("Dynamic Type") {
+    RemoteView(viewModel: RemoteViewModel(
+        tv: SamsungTV(name: "Living Room TV", ipAddress: "192.168.1.12", macAddress: "AA:BB:CC:DD:EE:FF", model: "QLED", type: .tizen, protocolType: .modern),
+        dependencies: AppDependencies()
+    ))
+    .dynamicTypeSize(.accessibility3)
+    .environment(AppDependencies())
 }

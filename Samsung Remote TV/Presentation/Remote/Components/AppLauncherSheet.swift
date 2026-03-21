@@ -7,7 +7,7 @@ struct AppLauncherSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                Text("Curated shortcuts for common streaming apps.")
+                Text(L10n.text("remote.quick_launch_description", "Curated shortcuts for common streaming apps."))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
@@ -42,12 +42,14 @@ struct AppLauncherSheet: View {
                                 .frame(width: 92)
                             }
                             .buttonStyle(.plain)
+                            .accessibilityLabel("\(L10n.text("remote.quick_launch_open", "Open")) \(app.name)")
+                            .accessibilityHint(L10n.text("remote.quick_launch_hint", "Launches this app on your TV."))
                         }
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Quick Launch")
+            .navigationTitle(L10n.text("remote.quick_launch", "Quick Launch"))
         }
     }
 }

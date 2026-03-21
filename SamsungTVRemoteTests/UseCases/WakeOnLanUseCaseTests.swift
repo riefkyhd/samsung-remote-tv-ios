@@ -27,10 +27,10 @@ struct WakeOnLanUseCaseTests {
     }
 
     @Test("Invalid MAC format AA:BB:CC throws TVError.invalidMacAddress")
-    func invalidMacThrows() async {
+    func invalidMacThrows() {
         let sut = WakeOnLanUseCase(repository: MockTVRepository())
 
-        await #expect(throws: TVError.self) {
+        #expect(throws: TVError.self) {
             _ = try sut.makeMagicPacket(for: "AA:BB:CC")
         }
     }

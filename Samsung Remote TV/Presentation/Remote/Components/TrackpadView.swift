@@ -22,7 +22,7 @@ struct TrackpadView: View {
             VStack(spacing: 4) {
                 Image(systemName: "hand.point.up.left")
                     .foregroundStyle(.secondary)
-                Text("Trackpad")
+                Text(L10n.text("remote.trackpad", "Trackpad"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -66,6 +66,9 @@ struct TrackpadView: View {
                     onKey(.KEY_ENTER)
                 }
         )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(L10n.text("remote.trackpad_label", "Trackpad Control"))
+        .accessibilityHint(L10n.text("remote.trackpad_hint", "Swipe to move focus and tap to confirm."))
     }
 }
 

@@ -6,10 +6,10 @@ struct ColorButtons: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            ColorButton(color: .red, label: "Red") { action(.KEY_RED) }
-            ColorButton(color: .green, label: "Green") { action(.KEY_GREEN) }
-            ColorButton(color: .yellow, label: "Yellow") { action(.KEY_YELLOW) }
-            ColorButton(color: .blue, label: "Blue") { action(.KEY_BLUE) }
+            ColorButton(color: .red, label: L10n.text("remote.color_red", "Red")) { action(.KEY_RED) }
+            ColorButton(color: .green, label: L10n.text("remote.color_green", "Green")) { action(.KEY_GREEN) }
+            ColorButton(color: .yellow, label: L10n.text("remote.color_yellow", "Yellow")) { action(.KEY_YELLOW) }
+            ColorButton(color: .blue, label: L10n.text("remote.color_blue", "Blue")) { action(.KEY_BLUE) }
         }
     }
 }

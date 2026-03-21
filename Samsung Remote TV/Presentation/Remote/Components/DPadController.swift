@@ -85,7 +85,8 @@ struct DPadController: View {
                     }
             )
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("D-Pad")
+            .accessibilityLabel(L10n.text("remote.dpad_label", "D-Pad"))
+            .accessibilityHint(L10n.text("remote.dpad_hint", "Tap a direction to navigate. Tap center to confirm."))
         }
         .aspectRatio(1, contentMode: .fit)
     }

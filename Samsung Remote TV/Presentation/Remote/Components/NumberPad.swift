@@ -22,7 +22,8 @@ struct NumberPad: View {
                 }
                 .buttonStyle(.bordered)
                 .frame(maxWidth: .infinity)
-                .accessibilityLabel(key.rawValue)
+                .accessibilityLabel(accessibilityLabel(for: key))
+                .accessibilityHint(L10n.text("remote.number_pad_hint", "Sends a numeric key to the TV."))
             }
         }
     }
@@ -30,11 +31,22 @@ struct NumberPad: View {
     private func keyLabel(for key: RemoteKey) -> String {
         switch key {
         case .KEY_PRECH:
-            return "Prev"
+            return L10n.text("remote.number_pad_prev", "Prev")
         case .KEY_TTX_MIX:
-            return "TTX"
+            return L10n.text("remote.number_pad_ttx", "TTX")
         default:
             return key.rawValue.replacingOccurrences(of: "KEY_", with: "")
+        }
+    }
+
+    private func accessibilityLabel(for key: RemoteKey) -> String {
+        switch key {
+        case .KEY_PRECH:
+            return L10n.text("remote.number_pad_previous_channel", "Previous Channel")
+        case .KEY_TTX_MIX:
+            return L10n.text("remote.number_pad_text_mix", "Teletext")
+        default:
+            return keyLabel(for: key)
         }
     }
 }

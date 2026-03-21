@@ -70,12 +70,12 @@ final class DiscoveryViewModel {
     func connectManual() async -> SamsungTV? {
         let trimmed = manualIPAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            alertMessage = "Please enter an IP address."
+            alertMessage = L10n.text("discovery.manual_error_empty", "Please enter an IP address.")
             return nil
         }
 
         guard isValidIPv4(trimmed) else {
-            alertMessage = "Please enter a valid IPv4 address."
+            alertMessage = L10n.text("discovery.manual_error_invalid", "Please enter a valid IPv4 address.")
             return nil
         }
 
@@ -121,9 +121,9 @@ final class DiscoveryViewModel {
         }
         switch tvError {
         case .notOnWifi:
-            return "Connect to Wi-Fi, then try again."
+            return L10n.text("discovery.manual_error_wifi", "Connect to Wi-Fi, then try again.")
         case .invalidResponse, .connectionFailed:
-            return "Could not reach a compatible Samsung TV at that IP."
+            return L10n.text("discovery.manual_error_unreachable", "Could not reach a compatible Samsung TV at that IP.")
         default:
             return tvError.localizedDescription
         }

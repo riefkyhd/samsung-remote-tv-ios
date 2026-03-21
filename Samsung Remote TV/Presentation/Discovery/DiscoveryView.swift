@@ -20,27 +20,31 @@ struct DiscoveryView: View {
     var body: some View {
         Group {
             if viewModel.visibleDiscoveredTVs.isEmpty && viewModel.savedTVs.isEmpty && !viewModel.isScanning {
-                ContentUnavailableView("No TVs Found", systemImage: "tv", description: Text("Ensure iPhone and TV are on the same Wi-Fi."))
+                ContentUnavailableView(
+                    L10n.text("discovery.no_tvs_title", "No TVs Found"),
+                    systemImage: "tv",
+                    description: Text(L10n.text("discovery.no_tvs_description", "Ensure iPhone and TV are on the same Wi-Fi."))
+                )
             } else {
                 List {
                     if !viewModel.savedTVs.isEmpty {
-                        Section("Saved TVs") {
+                        Section(L10n.text("discovery.saved_section", "Saved TVs")) {
                             ForEach(viewModel.savedTVs) { tv in
                                 tvRow(tv, isSaved: true)
                                     .swipeActions {
                                         Button(role: .destructive) {
                                             viewModel.deleteSavedTV(tv)
                                         } label: {
-                                            Label("Delete", systemImage: "trash")
+                                            Label(L10n.text("common.delete", "Delete"), systemImage: "trash")
                                         }
                                     }
                             }
                         }
                     }
 
-                    Section("Discovered TVs") {
+                    Section(L10n.text("discovery.discovered_section", "Discovered TVs")) {
                         if viewModel.visibleDiscoveredTVs.isEmpty {
-                            Text("No new TVs found on this scan.")
+                            Text(L10n.text("discovery.no_new_tvs", "No new TVs found on this scan."))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -53,7 +57,7 @@ struct DiscoveryView: View {
                 .listStyle(.insetGrouped)
             }
         }
-        .navigationTitle("Samsung TV Remote")
+        .navigationTitle(L10n.text("discovery.navigation_title", "Samsung TV Remote"))
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 if let onOpenSettings {
@@ -62,10 +66,12 @@ struct DiscoveryView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .accessibilityLabel(L10n.text("common.settings", "Settings"))
+                    .accessibilityHint(L10n.text("discovery.settings_hint", "Opens app settings."))
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Add Manually") {
+                Button(L10n.text("discovery.add_manually", "Add Manually")) {
                     viewModel.showManualSheet = true
                 }
             }
@@ -96,9 +102,9 @@ struct DiscoveryView: View {
         .sheet(isPresented: $viewModel.showManualSheet) {
             NavigationStack {
                 Form {
-                    TextField("192.168.1.20", text: $viewModel.manualIPAddress)
+                    TextField(L10n.text("discovery.manual_ip_placeholder", "192.168.1.20"), text: $viewModel.manualIPAddress)
                         .keyboardType(.numbersAndPunctuation)
-                    Button("Connect") {
+                    Button(L10n.text("common.connect", "Connect")) {
                         Task {
                             if let tv = await viewModel.connectManual() {
                                 onSelectTV(tv)
@@ -106,12 +112,12 @@ struct DiscoveryView: View {
                         }
                     }
                 }
-                .navigationTitle("Add TV by IP")
+                .navigationTitle(L10n.text("discovery.manual_title", "Add TV by IP"))
             }
             .presentationDetents([.medium])
         }
         .alert(
-            "Error",
+            L10n.text("common.error", "Error"),
             isPresented: Binding(
                 get: { viewModel.alertMessage != nil },
                 set: { if !$0 { viewModel.alertMessage = nil } }
@@ -146,13 +152,15 @@ struct DiscoveryView: View {
 
             Spacer()
 
-            Button(isSaved ? "Open" : "Connect") {
+            Button(isSaved ? L10n.text("common.open", "Open") : L10n.text("common.connect", "Connect")) {
                 onSelectTV(tv)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.small)
         }
         .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(tv.name), \(tv.model), \(tv.ipAddress)")
     }
 
     private func startDiscoveryIfNeeded() {
@@ -173,5 +181,15 @@ struct DiscoveryView: View {
             viewModel: DiscoveryViewModel(dependencies: AppDependencies()),
             onSelectTV: { _ in }
         )
+    }
+}
+
+#Preview("Dynamic Type") {
+    NavigationStack {
+        DiscoveryView(
+            viewModel: DiscoveryViewModel(dependencies: AppDependencies()),
+            onSelectTV: { _ in }
+        )
+        .dynamicTypeSize(.accessibility3)
     }
 }

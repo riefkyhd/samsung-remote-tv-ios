@@ -8,25 +8,25 @@ struct MediaControls: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack(spacing: 12) {
-                RemoteCircleButton(icon: "backward.fill", label: "Rewind") {
+                RemoteCircleButton(icon: "backward.fill", label: L10n.text("remote.media_rewind", "Rewind")) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     action(.KEY_REWIND)
                 }
-                RemoteCircleButton(icon: "playpause.fill", label: "Play Pause") {
+                RemoteCircleButton(icon: "playpause.fill", label: L10n.text("remote.media_play_pause", "Play Pause")) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     playPauseAction()
                 }
-                RemoteCircleButton(icon: "forward.fill", label: "Fast Forward") {
+                RemoteCircleButton(icon: "forward.fill", label: L10n.text("remote.media_fast_forward", "Fast Forward")) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     action(.KEY_FF)
                 }
             }
             HStack(spacing: 12) {
-                RemoteCircleButton(icon: "stop.fill", label: "Stop") {
+                RemoteCircleButton(icon: "stop.fill", label: L10n.text("remote.media_stop", "Stop")) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     action(.KEY_STOP)
                 }
-                RemoteCircleButton(icon: "record.circle", label: "Record") {
+                RemoteCircleButton(icon: "record.circle", label: L10n.text("remote.media_record", "Record")) {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     action(.KEY_REC)
                 }

@@ -177,7 +177,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 recordError(context: "send_key", error: errorMessage)
             }
@@ -196,7 +196,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 recordError(context: "long_press_power", error: errorMessage)
             }
@@ -225,7 +225,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 recordError(context: "load_quick_launch", error: errorMessage)
             }
@@ -249,7 +249,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 recordError(context: "launch_app", error: errorMessage)
             }
@@ -271,7 +271,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 recordError(context: "wake_tv", error: errorMessage)
             }
@@ -296,15 +296,15 @@ final class RemoteViewModel {
     var connectionLabel: String {
         switch connectionState {
         case .connected:
-            return hasConfirmedControl ? "Ready" : "Connected"
+            return hasConfirmedControl ? L10n.text("remote.connection_ready", "Ready") : L10n.text("remote.connection_connected", "Connected")
         case .connecting:
-            return connectionAttemptCount > 1 ? "Reconnecting..." : "Connecting..."
+            return connectionAttemptCount > 1 ? L10n.text("remote.connection_reconnecting", "Reconnecting...") : L10n.text("remote.connection_connecting", "Connecting...")
         case .pairing:
-            return "Discovering Pairing..."
+            return L10n.text("remote.connection_pairing", "Discovering Pairing...")
         case .pinRequired:
-            return "Enter TV PIN"
+            return L10n.text("remote.connection_enter_pin", "Enter TV PIN")
         case .disconnected:
-            return "Disconnected"
+            return L10n.text("remote.connection_disconnected", "Disconnected")
         case .error(let error):
             return error.localizedDescription
         }
@@ -317,20 +317,20 @@ final class RemoteViewModel {
         switch connectionState {
         case .connected:
             return hasConfirmedControl
-                ? "Controls are ready. Use the remote below."
-                : "Connection established. Send a command to confirm control."
+                ? L10n.text("remote.guidance_controls_ready", "Controls are ready. Use the remote below.")
+                : L10n.text("remote.guidance_confirm_control", "Connection established. Send a command to confirm control.")
         case .connecting:
             return connectionAttemptCount > 1
-                ? "Trying to restore the session. Keep the TV on and on the same Wi-Fi."
-                : "Connecting to the TV over your local network."
+                ? L10n.text("remote.guidance_restore_session", "Trying to restore the session. Keep the TV on and on the same Wi-Fi.")
+                : L10n.text("remote.guidance_connecting", "Connecting to the TV over your local network.")
         case .pairing:
-            return "Preparing encrypted pairing with this TV model."
+            return L10n.text("remote.guidance_pairing", "Preparing encrypted pairing with this TV model.")
         case .pinRequired:
-            return "Enter the PIN shown on your TV before the timer expires."
+            return L10n.text("remote.guidance_pin_required", "Enter the PIN shown on your TV before the timer expires.")
         case .disconnected:
-            return "Make sure your TV is on and on the same Wi-Fi."
+            return L10n.text("remote.guidance_disconnected", "Make sure your TV is on and on the same Wi-Fi.")
         case .error:
-            return "Check TV power and Wi-Fi, then retry."
+            return L10n.text("remote.guidance_error", "Check TV power and Wi-Fi, then retry.")
         }
     }
 
@@ -342,7 +342,7 @@ final class RemoteViewModel {
     }
 
     func capabilityMessage(for action: TVCapabilityAction) -> String {
-        capabilities.unsupportedReason(for: action) ?? "This action is not supported on this TV."
+        capabilities.unsupportedReason(for: action) ?? L10n.text("remote.capability_unsupported", "This action is not supported on this TV.")
     }
 
     func submitPin() {
@@ -351,7 +351,7 @@ final class RemoteViewModel {
         pinErrorMessage = nil
         guard !sanitized.isEmpty else {
             showError = true
-            errorMessage = "Enter PIN shown on TV."
+            errorMessage = L10n.text("remote.pin_error_enter", "Enter PIN shown on TV.")
             pinErrorMessage = errorMessage
             recordError(context: "submit_pin_validation", error: errorMessage)
             return
@@ -374,7 +374,7 @@ final class RemoteViewModel {
                 if let tvError = error as? TVError {
                     errorMessage = userFriendlyMessage(for: tvError)
                 } else {
-                    errorMessage = "Could not connect. Please make sure the TV is on."
+                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
                 }
                 pinErrorMessage = errorMessage
                 recordError(context: "submit_pin", error: errorMessage)
@@ -459,28 +459,28 @@ final class RemoteViewModel {
     private func userFriendlyMessage(for error: TVError) -> String {
         switch error {
         case .pairingRejected:
-            return "Incorrect PIN. Check the TV screen and enter the new PIN."
+            return L10n.text("remote.error_pairing_rejected", "Incorrect PIN. Check the TV screen and enter the new PIN.")
         case .connectionFailed, .notConnected, .spcHandshakeFailed:
-            return "Could not connect to TV. Keep TV on the same Wi-Fi, then tap Retry Connection."
+            return L10n.text("remote.error_connection_failed", "Could not connect to TV. Keep TV on the same Wi-Fi, then tap Retry Connection.")
         case .spcTokenExpired:
-            return "Pairing session expired. Open Settings > Forget Pairing, then connect again."
+            return L10n.text("remote.error_token_expired", "Pairing session expired. Open Settings > Forget Pairing, then connect again.")
         case .spcPairingFailed(let reason):
             if reason.lowercased().contains("pin page") {
-                return "Could not open the PIN page on TV. Keep TV awake and try again."
+                return L10n.text("remote.error_pin_page", "Could not open the PIN page on TV. Keep TV awake and try again.")
             }
-            return "Could not complete pairing. Retry, or use Forget Pairing in Settings."
+            return L10n.text("remote.error_pairing_failed", "Could not complete pairing. Retry, or use Forget Pairing in Settings.")
         case .unsupportedProtocol:
-            return "This TV protocol is not supported for this action."
+            return L10n.text("remote.error_unsupported_protocol", "This TV protocol is not supported for this action.")
         case .appLaunchFailed:
-            return "Quick Launch failed. Ensure the app is available on your TV and try again."
+            return L10n.text("remote.error_quick_launch_failed", "Quick Launch failed. Ensure the app is available on your TV and try again.")
         case .invalidResponse:
-            return "TV replied unexpectedly. Retry the connection."
+            return L10n.text("remote.error_invalid_response", "TV replied unexpectedly. Retry the connection.")
         case .notOnWifi:
-            return "Please connect to Wi-Fi to control your TV."
+            return L10n.text("remote.error_not_on_wifi", "Please connect to Wi-Fi to control your TV.")
         case .pinTimeout:
-            return "PIN timed out. Request a new PIN and enter it within 30 seconds."
+            return L10n.text("remote.error_pin_timeout", "PIN timed out. Request a new PIN and enter it within 30 seconds.")
         default:
-            return "Action failed. Check TV power/Wi-Fi and retry."
+            return L10n.text("remote.error_action_failed", "Action failed. Check TV power/Wi-Fi and retry.")
         }
     }
 }
