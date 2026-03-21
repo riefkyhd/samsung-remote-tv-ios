@@ -30,8 +30,12 @@ actor SpcHandshakeClient {
         _ = preferredStep0
         _ = preferredStep1
         if pendingByIP.contains(tv.ipAddress) {
-            // Keep existing pending session to avoid re-triggering duplicated TV PIN overlays.
-            return
+            let running = try await waitForPinPageRunning(ip: tv.ipAddress, timeout: 2.0)
+            if running {
+                // Existing PIN page is still visible on TV; keep current pending session.
+                return
+            }
+            pendingByIP.remove(tv.ipAddress)
         }
         print("[TVDBG][SPC] prepare pairing ip=\(tv.ipAddress)")
         try await requestDeletePinPage(ip: tv.ipAddress)
@@ -75,7 +79,8 @@ actor SpcHandshakeClient {
             aesKey: step1Result.aesKey,
             userId: fixedDeviceID
         ) else {
-            throw TVError.spcPairingFailed("PIN incorrect")
+            print("[TVDBG][SPC] PIN incorrect - parseClientHello returning nil")
+            throw TVError.pairingRejected
         }
 
         // Step2 must follow parseClientHello immediately to avoid session expiry.
@@ -142,7 +147,34 @@ private extension SpcHandshakeClient {
         if !(200..<300).contains(postStatus) {
             throw TVError.spcPairingFailed("CloudPINPage POST failed (\(postStatus))")
         }
+        let isRunning = try await waitForPinPageRunning(ip: ip, timeout: 3.0)
+        guard isRunning else {
+            throw TVError.spcPairingFailed("TV did not display PIN page")
+        }
         print("[TVDBG][SPC] CloudPINPage POST ok status=\(postStatus)")
+    }
+
+    func isPinPageRunning(ip: String) async throws -> Bool {
+        let getURL = URL(string: "http://\(ip):8080/ws/apps/CloudPINPage")!
+        var request = URLRequest(url: getURL)
+        request.httpMethod = "GET"
+        request.timeoutInterval = 3
+        let (data, response) = try await session.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        guard (200..<300).contains(status) else { return false }
+        let body = String(data: data, encoding: .utf8)?.lowercased() ?? ""
+        return body.contains("<state>running</state>")
+    }
+
+    func waitForPinPageRunning(ip: String, timeout: TimeInterval) async throws -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if try await isPinPageRunning(ip: ip) {
+                return true
+            }
+            try? await Task.sleep(for: .milliseconds(250))
+        }
+        return false
     }
 
     func pairingURL(ip: String, step: Int, deviceID: String) -> URL {

@@ -128,14 +128,22 @@ struct RemoteView: View {
                 )
             }
 
-            Picker("Mode", selection: $showTrackpad) {
-                Text("Remote").tag(false)
-                Text("Trackpad").tag(true)
+            if viewModel.capabilities.trackpad {
+                Picker("Mode", selection: $showTrackpad) {
+                    Text("Remote").tag(false)
+                    Text("Trackpad").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 8)
+            } else {
+                Text(viewModel.capabilityMessage(for: .trackpad))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
             }
-            .pickerStyle(.segmented)
-            .padding(.horizontal, 8)
 
-            if showTrackpad {
+            if viewModel.capabilities.trackpad && showTrackpad {
                 TrackpadView { key in
                     viewModel.sendKey(key)
                 }
@@ -160,6 +168,8 @@ struct RemoteView: View {
                 playPauseAction: { viewModel.togglePlayPause() },
                 action: { key in viewModel.sendKey(key) }
             )
+            .disabled(!viewModel.capabilities.mediaTransport)
+            .opacity(viewModel.capabilities.mediaTransport ? 1 : 0.5)
 
             ColorButtons { key in viewModel.sendKey(key) }
         }
@@ -192,6 +202,15 @@ struct RemoteView: View {
                     .foregroundStyle(.white)
             }
             .tint(.white)
+            .disabled(!viewModel.capabilities.numberPad)
+            .opacity(viewModel.capabilities.numberPad ? 1 : 0.5)
+
+            if !viewModel.capabilities.numberPad {
+                Text(viewModel.capabilityMessage(for: .numberPad))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             HStack(spacing: 8) {
                 softButton("Menu", style: .light) { viewModel.sendKey(.KEY_MENU) }
@@ -211,12 +230,27 @@ struct RemoteView: View {
                 viewModel.isAppSheetPresented = true
             }
             .buttonStyle(.borderedProminent)
+            .disabled(!viewModel.capabilities.appLaunch)
+
+            if !viewModel.capabilities.appLaunch {
+                Text(viewModel.capabilityMessage(for: .appLaunch))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
 
             Button("Wake TV") {
                 viewModel.wakeTV()
             }
             .buttonStyle(.bordered)
-            .disabled(viewModel.tv.protocolType == .encrypted)
+            .disabled(!viewModel.capabilities.wakeOnLan)
+
+            if !viewModel.capabilities.wakeOnLan {
+                Text(viewModel.capabilityMessage(for: .wakeOnLan))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(16)
         .frame(maxWidth: horizontalSizeClass == .regular ? 280 : .infinity)

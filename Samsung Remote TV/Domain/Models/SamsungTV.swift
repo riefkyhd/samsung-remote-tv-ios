@@ -50,4 +50,8 @@ struct SamsungTV: Codable, Hashable, Identifiable, Sendable {
             return .legacy
         }
     }
+
+    var capabilities: TVCapabilities {
+        TVCapabilities.resolve(for: self)
+    }
 }

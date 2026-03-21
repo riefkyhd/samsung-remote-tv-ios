@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ColorButtons: View {
     let action: (RemoteKey) -> Void
@@ -19,7 +20,12 @@ private struct ColorButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(label, action: action)
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        } label: {
+            Text(label)
+        }
             .buttonStyle(.plain)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)

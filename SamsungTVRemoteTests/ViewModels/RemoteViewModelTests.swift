@@ -62,6 +62,47 @@ struct RemoteViewModelTests {
         #expect(repo.launchedAppId == "abc")
     }
 
+    @Test("Unsupported app launch is blocked before repository call")
+    func unsupportedAppLaunchBlockedUpfront() async {
+        let repo = MockTVRepository()
+        let legacyTV = SamsungTV(
+            name: "Legacy",
+            ipAddress: "192.168.1.40",
+            macAddress: "AA:BB:CC:DD:EE:10",
+            model: "D8000",
+            type: .legacy
+        )
+        let vm = makeViewModel(repository: repo, tv: legacyTV)
+        vm.connectionState = .connected
+
+        vm.launchApp(TVApp(id: "abc", name: "Test", iconURL: nil))
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(repo.launchedAppId == nil)
+        #expect(vm.showError)
+        #expect(vm.errorMessage.contains("App launch"))
+    }
+
+    @Test("Unsupported wake is blocked before repository call")
+    func unsupportedWakeBlockedUpfront() async {
+        let repo = MockTVRepository()
+        let encryptedTV = SamsungTV(
+            name: "Encrypted",
+            ipAddress: "192.168.1.50",
+            macAddress: "AA:BB:CC:DD:EE:11",
+            model: "JU6700",
+            type: .encrypted
+        )
+        let vm = makeViewModel(repository: repo, tv: encryptedTV)
+
+        vm.wakeTV()
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(repo.wakeOnLanCalled == false)
+        #expect(vm.showError)
+        #expect(vm.errorMessage.contains("Wake on LAN"))
+    }
+
     @Test("Settings presentation path does not disconnect active session")
     func settingsPresentationDoesNotDisconnect() async {
         let repo = MockTVRepository()
@@ -90,11 +131,12 @@ struct RemoteViewModelTests {
 
     private func makeViewModel(
         repository: MockTVRepository = MockTVRepository(),
-        throwOnSend: Bool = false
+        throwOnSend: Bool = false,
+        tv: SamsungTV? = nil
     ) -> RemoteViewModel {
         repository.shouldThrowOnSend = throwOnSend
 
-        let tv = SamsungTV(
+        let resolvedTV = tv ?? SamsungTV(
             name: "TV",
             ipAddress: "192.168.1.1",
             macAddress: "AA:BB:CC:DD:EE:FF",
@@ -103,7 +145,7 @@ struct RemoteViewModelTests {
         )
 
         return RemoteViewModel(
-            tv: tv,
+            tv: resolvedTV,
             connectToTVUseCase: ConnectToTVUseCase(repository: repository),
             sendRemoteKeyUseCase: SendRemoteKeyUseCase(repository: repository),
             getInstalledAppsUseCase: GetInstalledAppsUseCase(repository: repository),

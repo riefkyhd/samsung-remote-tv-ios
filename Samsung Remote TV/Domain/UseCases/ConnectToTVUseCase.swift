@@ -14,40 +14,48 @@ struct ConnectToTVUseCase: Sendable {
     func executeWithReconnection(tv: SamsungTV) -> AsyncStream<TVConnectionState> {
         AsyncStream { continuation in
             let task = Task {
-                var delay: Double = 1
+                var retryCount = 0
+                let fastRetryDelays: [Double] = [1.0, 2.0, 3.0, 5.0]
+                let slowRetryDelay: Double = 10.0
+
                 while !Task.isCancelled {
+                    continuation.yield(.connecting)
                     var shouldPauseForPin = false
-                    var shouldStopReconnect = false
+                    var sawError = false
+                    var connectedThisPass = false
+
                     for await state in repository.connect(to: tv) {
                         continuation.yield(state)
                         if case .connected = state {
-                            delay = 1
+                            connectedThisPass = true
+                            retryCount = 0
                         }
                         if case .pinRequired = state {
                             shouldPauseForPin = true
+                            break
                         }
-                        if case .error(let error) = state {
-                            switch error {
-                            case .spcHandshakeFailed, .spcPairingFailed, .pinTimeout, .unsupportedProtocol:
-                                shouldStopReconnect = true
-                            default:
-                                break
-                            }
+                        if case .error = state {
+                            sawError = true
+                            break
                         }
                     }
 
                     if shouldPauseForPin {
-                        // Wait until user submits PIN via explicit pairing action.
+                        // Wait until user submits PIN explicitly.
                         break
                     }
-                    if shouldStopReconnect {
-                        break
-                    }
+                    if Task.isCancelled { break }
 
-                    continuation.yield(.connecting)
+                    let delay = retryCount < fastRetryDelays.count
+                        ? fastRetryDelays[retryCount]
+                        : slowRetryDelay
+                    retryCount += 1
+                    if sawError || !connectedThisPass {
+                        print("[TVDBG][Repo] reconnect in \(delay)s (attempt \(retryCount))")
+                    }
                     try? await Task.sleep(for: .seconds(delay))
-                    delay = min(delay * 2, 30)
                 }
+                continuation.finish()
             }
 
             continuation.onTermination = { _ in

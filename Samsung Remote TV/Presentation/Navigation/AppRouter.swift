@@ -14,6 +14,9 @@ struct AppRouter: View {
                 viewModel: DiscoveryViewModel(dependencies: dependencies),
                 onSelectTV: { tv in
                     path.append(tv)
+                },
+                onOpenSettings: {
+                    path.append(AppRoute.settings)
                 }
             )
             .navigationDestination(for: SamsungTV.self) { tv in

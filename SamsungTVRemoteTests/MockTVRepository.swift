@@ -9,6 +9,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
     var sentKeys: [(RemoteKey, String)] = []
     var launchedAppId: String?
     var disconnectCalled = false
+    var wakeOnLanCalled = false
     var pairingForgottenForTVs: [SamsungTV] = []
     var removedTVs: [SamsungTV] = []
     var remoteNameValue = "SamsungTVRemote"
@@ -52,6 +53,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
     }
 
     func wakeOnLan(macAddress: String) async throws {
+        wakeOnLanCalled = true
         guard macAddress.contains(":") else { throw TVError.invalidMacAddress }
     }
 

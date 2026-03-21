@@ -22,6 +22,7 @@ final class RemoteViewModel {
     var pinCountdown = 30
     var isSubmittingPin = false
     var isProbingVariants = false
+    var capabilities: TVCapabilities { tv.capabilities }
 
     private let connectToTVUseCase: ConnectToTVUseCase
     private let sendRemoteKeyUseCase: SendRemoteKeyUseCase
@@ -167,6 +168,10 @@ final class RemoteViewModel {
     }
 
     func loadApps() {
+        guard capabilities.appLaunch else {
+            installedApps = []
+            return
+        }
         Task {
             do {
                 installedApps = try await getInstalledAppsUseCase.execute(for: tv)
@@ -182,6 +187,11 @@ final class RemoteViewModel {
     }
 
     func launchApp(_ app: TVApp) {
+        guard capabilities.appLaunch else {
+            showError = true
+            errorMessage = capabilityMessage(for: .appLaunch)
+            return
+        }
         guard canSendCommands else { return }
         Task {
             do {
@@ -199,11 +209,13 @@ final class RemoteViewModel {
     }
 
     func wakeTV() {
+        guard capabilities.wakeOnLan else {
+            showError = true
+            errorMessage = capabilityMessage(for: .wakeOnLan)
+            return
+        }
         Task {
             do {
-                if tv.protocolType == .encrypted {
-                    throw TVError.unsupportedProtocol("Older encrypted Samsung TVs cannot power on over network.")
-                }
                 try await wakeOnLanUseCase.execute(macAddress: tv.macAddress)
             } catch {
                 showError = true
@@ -253,6 +265,10 @@ final class RemoteViewModel {
             return true
         }
         return false
+    }
+
+    func capabilityMessage(for action: TVCapabilityAction) -> String {
+        capabilities.unsupportedReason(for: action) ?? "This action is not supported on this TV."
     }
 
     func submitPin() {

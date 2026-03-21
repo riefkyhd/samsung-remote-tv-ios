@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct NumberPad: View {
     let action: (RemoteKey) -> Void
@@ -16,6 +17,7 @@ struct NumberPad: View {
         LazyVGrid(columns: columns, spacing: 8) {
             ForEach(keys, id: \.self) { key in
                 Button(keyLabel(for: key)) {
+                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                     action(key)
                 }
                 .buttonStyle(.bordered)

@@ -1,16 +1,24 @@
 import Foundation
 
 actor SpcWebSocketClient {
+    private typealias PendingCommand = (key: RemoteKey, ctxHex: String, sessionId: Int)
+
     private var task: URLSessionWebSocketTask?
     private var session: URLSession?
     private var receiveTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
+    private var sendQueue: AsyncStream<PendingCommand>.Continuation?
+    private var sendQueueTask: Task<Void, Never>?
+    private var firstCommandVerifyTask: Task<Void, Never>?
     private var continuation: AsyncStream<TVConnectionState>.Continuation?
     private var isConnected = false
-    private var lastKeySentAt: Date = .distantPast
+    private var receivedFirstResponse = false
+    private var queuedFirstCommand = false
 
     func connect(ipAddress: String, remoteName: String) -> AsyncStream<TVConnectionState> {
         _ = remoteName
+        resetSendQueue()
+
         return AsyncStream { continuation in
             self.continuation = continuation
             continuation.yield(.connecting)
@@ -37,37 +45,27 @@ actor SpcWebSocketClient {
         print("[TVDBG][SPC] ws disconnect")
         receiveTask?.cancel()
         heartbeatTask?.cancel()
+        firstCommandVerifyTask?.cancel()
+        resetSendQueue()
         receiveTask = nil
         heartbeatTask = nil
+        firstCommandVerifyTask = nil
         task?.cancel(with: .normalClosure, reason: nil)
         task = nil
         session?.invalidateAndCancel()
         session = nil
         isConnected = false
+        receivedFirstResponse = false
+        queuedFirstCommand = false
         continuation?.yield(.disconnected)
         continuation?.finish()
     }
 
     func sendKey(_ key: RemoteKey, command: String, ctxHex: String, sessionID: String) async throws {
         _ = command
-        guard isConnected, let task else { throw TVError.notConnected }
+        guard isConnected else { throw TVError.notConnected }
         guard let sessionId = Int(sessionID) else { throw TVError.encryptionFailed }
-
-        // Debounce: ignore sends within 200ms of the last one
-        let now = Date()
-        guard now.timeIntervalSince(lastKeySentAt) > 0.2 else {
-            print("[TVDBG][SPC] ws debounce dropped key=\(key.rawValue)")
-            return
-        }
-        lastKeySentAt = now
-
-        let commandMessage = try SpcCrypto.generateCommand(
-            ctxUpperHex: ctxHex,
-            sessionId: sessionId,
-            keyCode: key.rawValue
-        )
-        try await task.send(.string(commandMessage))
-        print("[TVDBG][SPC] ws send key=\(key.rawValue)")
+        sendQueue?.yield((key: key, ctxHex: ctxHex, sessionId: sessionId))
     }
 
     private func open(ipAddress: String) async throws {
@@ -88,6 +86,9 @@ actor SpcWebSocketClient {
         await waitForNamespaceConfirm(task: task, timeout: 2.0)
 
         self.isConnected = true
+        self.receivedFirstResponse = false
+        self.queuedFirstCommand = false
+        startSendQueue()
         startHeartbeatLoop()
         startReceiveLoop()
         print("[TVDBG][SPC] ws connected ip=\(ipAddress) sid=\(sid)")
@@ -136,6 +137,9 @@ actor SpcWebSocketClient {
                     let message = try await task.receive()
                     if case .string(let text) = message {
                         print("[TVDBG][SPC] ws rx: \(text)")
+                        if text.contains("receiveCommon") {
+                            receivedFirstResponse = true
+                        }
                         // Reply to heartbeat - 2 colons
                         if text.hasPrefix("2::") {
                             try? await task.send(.string("2::"))
@@ -150,6 +154,58 @@ actor SpcWebSocketClient {
                 }
             }
         }
+    }
+
+    private func startSendQueue() {
+        let stream = AsyncStream<PendingCommand> { continuation in
+            self.sendQueue = continuation
+        }
+
+        sendQueueTask = Task {
+            for await command in stream {
+                guard let task = self.task else { continue }
+                guard let message = try? SpcCrypto.generateCommand(
+                    ctxUpperHex: command.ctxHex,
+                    sessionId: command.sessionId,
+                    keyCode: command.key.rawValue
+                ) else {
+                    continue
+                }
+
+                try? await task.send(.string(message))
+                print("[TVDBG][SPC] ws send key=\(command.key.rawValue)")
+
+                if !queuedFirstCommand {
+                    queuedFirstCommand = true
+                    firstCommandVerifyTask?.cancel()
+                    firstCommandVerifyTask = Task {
+                        await verifyFirstCommandResponse()
+                    }
+                }
+
+                // Keep command cadence stable and avoid TV-side command buffering spikes.
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+        }
+    }
+
+    private func resetSendQueue() {
+        sendQueueTask?.cancel()
+        sendQueue?.finish()
+        sendQueue = nil
+        sendQueueTask = nil
+    }
+
+    private func verifyFirstCommandResponse() async {
+        let deadline = Date().addingTimeInterval(3.0)
+        while Date() < deadline {
+            if receivedFirstResponse { return }
+            try? await Task.sleep(for: .milliseconds(200))
+        }
+
+        guard isConnected else { return }
+        print("[TVDBG][SPC] no response to first command — credentials may be stale")
+        continuation?.yield(.error(.spcTokenExpired))
     }
 
     private func startHeartbeatLoop() {

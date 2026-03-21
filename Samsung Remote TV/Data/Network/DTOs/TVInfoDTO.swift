@@ -26,7 +26,7 @@ struct TVInfoDTO: Codable, Sendable {
         }
 
         return SamsungTV(
-            name: decodeHTMLEntities(device?.name ?? "Samsung TV"),
+            name: cleanTVName(decodeHTMLEntities(device?.name ?? "Samsung TV")),
             ipAddress: ipAddress,
             macAddress: device?.wifiMac ?? "",
             model: model,
@@ -92,5 +92,16 @@ struct TVInfoDTO: Codable, Sendable {
         }
 
         return decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func cleanTVName(_ raw: String) -> String {
+        var name = raw.trimmingCharacters(in: CharacterSet(charactersIn: "\"'"))
+        if let range = name.range(
+            of: #"\s+[a-z]{1,2}[\"']?\s*$"#,
+            options: .regularExpression
+        ) {
+            name = String(name[..<range.lowerBound])
+        }
+        return name.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

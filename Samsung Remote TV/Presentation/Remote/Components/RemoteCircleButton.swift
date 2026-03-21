@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct RemoteCircleButton: View {
     let icon: String
@@ -8,7 +7,6 @@ struct RemoteCircleButton: View {
 
     var body: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
             Image(systemName: icon)
