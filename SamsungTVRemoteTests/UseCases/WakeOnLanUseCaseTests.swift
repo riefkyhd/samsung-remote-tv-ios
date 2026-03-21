@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("WakeOnLanUseCase")
+@MainActor
 struct WakeOnLanUseCaseTests {
     @Test("Valid MAC address produces 102-byte magic packet")
     func packetLength() throws {

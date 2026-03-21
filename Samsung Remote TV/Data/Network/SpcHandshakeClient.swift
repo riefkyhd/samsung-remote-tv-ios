@@ -73,18 +73,22 @@ actor SpcHandshakeClient {
             throw TVError.spcHandshakeFailed("Step1 returned empty auth_data")
         }
 
-        guard let parsedHello = try SpcCrypto.parseClientHello(
-            clientHelloHex: clientHelloHex,
-            hash: step1Result.hash,
-            aesKey: step1Result.aesKey,
-            userId: fixedDeviceID
-        ) else {
+        guard let parsedHello = try await MainActor.run(body: {
+            try SpcCrypto.parseClientHello(
+                clientHelloHex: clientHelloHex,
+                hash: step1Result.hash,
+                aesKey: step1Result.aesKey,
+                userId: fixedDeviceID
+            )
+        }) else {
             print("[TVDBG][SPC] PIN incorrect - parseClientHello returning nil")
             throw TVError.pairingRejected
         }
 
         // Step2 must follow parseClientHello immediately to avoid session expiry.
-        let serverAckMsg = SpcCrypto.generateServerAcknowledge(skPrime: parsedHello.skPrime)
+        let serverAckMsg = await MainActor.run {
+            SpcCrypto.generateServerAcknowledge(skPrime: parsedHello.skPrime)
+        }
         let requestID = extractRequestID(from: step1Data) ?? "0"
         let step2Data = try await requestStep2(
             ip: tv.ipAddress,
@@ -205,7 +209,9 @@ private extension SpcHandshakeClient {
         req.timeoutInterval = 5
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let localHello = try SpcCrypto.generateServerHello(userId: deviceID, pin: pin)
+        let localHello = try await MainActor.run(body: {
+            try SpcCrypto.generateServerHello(userId: deviceID, pin: pin)
+        })
         let serverHelloHex = localHello.serverHello.map { String(format: "%02X", $0) }.joined()
         let body = "{\"auth_Data\":{\"auth_type\":\"SPC\",\"GeneratorServerHello\":\"\(serverHelloHex)\"}}"
         req.httpBody = body.data(using: .utf8)

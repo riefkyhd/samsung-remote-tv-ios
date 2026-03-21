@@ -2,15 +2,15 @@ import SwiftUI
 
 struct SpcPairingView: View {
     @State private var viewModel: SpcPairingViewModel
-    let onCancel: () -> Void
-    let onSuccess: () -> Void
-    let onTimeout: () -> Void
+    let onCancel: @MainActor @Sendable () -> Void
+    let onSuccess: @MainActor @Sendable () -> Void
+    let onTimeout: @MainActor @Sendable () -> Void
 
     init(
         viewModel: SpcPairingViewModel,
-        onCancel: @escaping () -> Void,
-        onSuccess: @escaping () -> Void,
-        onTimeout: @escaping () -> Void
+        onCancel: @escaping @MainActor @Sendable () -> Void,
+        onSuccess: @escaping @MainActor @Sendable () -> Void,
+        onTimeout: @escaping @MainActor @Sendable () -> Void
     ) {
         _viewModel = State(initialValue: viewModel)
         self.onCancel = onCancel

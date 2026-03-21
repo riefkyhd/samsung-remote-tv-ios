@@ -40,7 +40,7 @@ struct SamsungTV: Codable, Hashable, Identifiable, Sendable {
         self.protocolType = protocolType ?? Self.protocolFromType(type)
     }
 
-    private static func protocolFromType(_ type: TVType) -> TVProtocol {
+    private nonisolated static func protocolFromType(_ type: TVType) -> TVProtocol {
         switch type {
         case .tizen:
             return .modern

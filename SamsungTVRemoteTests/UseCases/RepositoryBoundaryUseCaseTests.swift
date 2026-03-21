@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("Repository Boundary Use Cases")
+@MainActor
 struct RepositoryBoundaryUseCaseTests {
     @Test("DisconnectTVUseCase calls repository disconnect")
     func disconnectUseCaseCallsRepository() async {

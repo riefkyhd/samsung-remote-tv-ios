@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("DiscoverTVsUseCase")
+@MainActor
 struct DiscoverTVsUseCaseTests {
     @Test("REST scan emits discovered TV on valid response")
     func restScanEmitsTV() async {

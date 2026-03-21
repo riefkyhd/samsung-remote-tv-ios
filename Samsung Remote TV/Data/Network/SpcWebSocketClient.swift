@@ -164,11 +164,19 @@ actor SpcWebSocketClient {
         sendQueueTask = Task {
             for await command in stream {
                 guard let task = self.task else { continue }
-                guard let message = try? SpcCrypto.generateCommand(
-                    ctxUpperHex: command.ctxHex,
-                    sessionId: command.sessionId,
-                    keyCode: command.key.rawValue
-                ) else {
+                let message: String?
+                do {
+                    message = try await MainActor.run(body: {
+                        try SpcCrypto.generateCommand(
+                            ctxUpperHex: command.ctxHex,
+                            sessionId: command.sessionId,
+                            keyCode: command.key.rawValue
+                        )
+                    })
+                } catch {
+                    message = nil
+                }
+                guard let message else {
                     continue
                 }
 

@@ -226,10 +226,11 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(DERIVED_FILE_DIR)/strip_smartview_archs.stamp",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n\"${PROJECT_DIR}/scripts/strip_smartview_archs.sh\"\n";
+				shellScript = "\"${PROJECT_DIR}/scripts/strip_smartview_archs.sh\"\ntouch \"${DERIVED_FILE_DIR}/strip_smartview_archs.stamp\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

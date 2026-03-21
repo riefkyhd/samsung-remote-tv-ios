@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("TVRepositoryImpl")
+@MainActor
 struct TVRepositoryImplTests {
     @Test("Save TV persists to UserDefaults and can be retrieved")
     func saveAndLoad() throws {

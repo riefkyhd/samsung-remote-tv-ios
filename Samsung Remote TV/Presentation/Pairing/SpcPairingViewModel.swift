@@ -28,7 +28,7 @@ final class SpcPairingViewModel {
                 countdown -= 1
             }
             if countdown == 0 {
-                await onTimeout()
+                onTimeout()
             }
         }
     }
@@ -49,7 +49,7 @@ final class SpcPairingViewModel {
 
         do {
             try await pairUseCase.complete(pin: pinCode, for: tv)
-            await onSuccess()
+            onSuccess()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -88,7 +88,9 @@ final class SmartViewSDKClient: NSObject, ObservableObject {
             }
 
             continuation.onTermination = { _ in
-                self.disconnect()
+                Task { @MainActor [weak self] in
+                    self?.disconnect()
+                }
             }
         }
     }

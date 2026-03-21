@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("SendRemoteKeyUseCase")
+@MainActor
 struct SendRemoteKeyUseCaseTests {
     @Test("Connected state sends correctly formatted JSON for KEY_VOLUP")
     func sendsVolUp() async throws {

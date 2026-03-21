@@ -3,6 +3,7 @@ import Testing
 @testable import Samsung_Remote_TV
 
 @Suite("ConnectToTVUseCase")
+@MainActor
 struct ConnectToTVUseCaseTests {
     @Test("No stored token produces Pairing connection state")
     func noTokenPairing() async {
