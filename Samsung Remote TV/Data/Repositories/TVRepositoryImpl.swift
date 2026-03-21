@@ -2,11 +2,137 @@ import Foundation
 import Network
 
 final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
-    private enum ActiveTransport {
+    enum ActiveTransport: Sendable {
         case webSocket
         case smartView
         case spc
         case legacy
+    }
+
+    enum ConnectionLifecycleState: Sendable {
+        case idle
+        case connecting
+        case pairing
+        case pinRequired
+        case connected
+    }
+
+    actor ConnectionCoordinator {
+        struct SendSnapshot: Sendable {
+            let isConnected: Bool
+            let activeTransport: ActiveTransport
+            let activeSpcCredentials: TVUserDefaultsStorage.SpcCredentials?
+            let currentTV: SamsungTV?
+        }
+
+        struct DisconnectSnapshot: Sendable {
+            let activeTransport: ActiveTransport
+        }
+
+        private(set) var lifecycleState: ConnectionLifecycleState = .idle
+        private var sessionID: Int = 0
+        private var activeTransport: ActiveTransport = .webSocket
+        private var transportConnected = false
+        private var activeSpcCredentials: TVUserDefaultsStorage.SpcCredentials?
+        private var spcPairingInProgress = false
+        private var currentTV: SamsungTV?
+
+        func beginConnect(tv: SamsungTV) -> Int {
+            sessionID += 1
+            currentTV = tv
+            transportConnected = false
+            activeSpcCredentials = nil
+            spcPairingInProgress = false
+            lifecycleState = .connecting
+            return sessionID
+        }
+
+        func isCurrentSession(_ id: Int) -> Bool {
+            id == sessionID
+        }
+
+        func setActiveTransport(_ transport: ActiveTransport, session: Int) {
+            guard isCurrentSession(session) else { return }
+            activeTransport = transport
+        }
+
+        func markConnected(session: Int) {
+            guard isCurrentSession(session) else { return }
+            transportConnected = true
+            lifecycleState = .connected
+        }
+
+        func markDisconnected(session: Int) {
+            guard isCurrentSession(session) else { return }
+            transportConnected = false
+            switch lifecycleState {
+            case .pairing, .pinRequired:
+                break
+            default:
+                lifecycleState = .idle
+            }
+        }
+
+        func markPairingInProgress(session: Int) {
+            guard isCurrentSession(session) else { return }
+            spcPairingInProgress = true
+            lifecycleState = .pairing
+        }
+
+        func markPinRequired(session: Int) {
+            guard isCurrentSession(session) else { return }
+            lifecycleState = .pinRequired
+        }
+
+        func clearPairingInProgress(session: Int) {
+            guard isCurrentSession(session) else { return }
+            spcPairingInProgress = false
+            if !transportConnected {
+                lifecycleState = .idle
+            }
+        }
+
+        func shouldDisconnectOnConnectTermination(session: Int) -> Bool {
+            guard isCurrentSession(session) else { return false }
+            return !spcPairingInProgress
+        }
+
+        func setActiveSpcCredentials(_ credentials: TVUserDefaultsStorage.SpcCredentials?, session: Int) {
+            guard isCurrentSession(session) else { return }
+            activeSpcCredentials = credentials
+        }
+
+        func currentSessionID() -> Int {
+            sessionID
+        }
+
+        func sendSnapshot() -> SendSnapshot {
+            SendSnapshot(
+                isConnected: transportConnected,
+                activeTransport: activeTransport,
+                activeSpcCredentials: activeSpcCredentials,
+                currentTV: currentTV
+            )
+        }
+
+        func invalidateForDisconnect() -> DisconnectSnapshot {
+            sessionID += 1
+            let snapshot = DisconnectSnapshot(activeTransport: activeTransport)
+            transportConnected = false
+            activeSpcCredentials = nil
+            spcPairingInProgress = false
+            lifecycleState = .idle
+            return snapshot
+        }
+
+        func isCurrentTV(_ tv: SamsungTV) -> Bool {
+            guard let currentTV else { return false }
+            if currentTV.id == tv.id { return true }
+            if !tv.macAddress.isEmpty && currentTV.macAddress.caseInsensitiveCompare(tv.macAddress) == .orderedSame {
+                return true
+            }
+            return currentTV.ipAddress == tv.ipAddress
+        }
     }
 
     private let restClient: SamsungTVRestClient
@@ -20,11 +146,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private let ipRangeScanner: IPRangeScanner
     private let bonjourDiscovery: BonjourDiscovery
     private let ssdpDiscovery: SSDPDiscovery
-    private var activeTransport: ActiveTransport = .webSocket
-    private var transportConnected = false
-    private var activeSpcCredentials: TVUserDefaultsStorage.SpcCredentials?
-    private var spcPairingInProgress = false
-    private var currentTV: SamsungTV?
+    private let connectionCoordinator = ConnectionCoordinator()
 
     init(
         restClient: SamsungTVRestClient,
@@ -98,8 +220,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     func connect(to tv: SamsungTV) -> AsyncStream<TVConnectionState> {
         AsyncStream { continuation in
             let task = Task {
-                currentTV = tv
-                transportConnected = false
+                let sessionID = await connectionCoordinator.beginConnect(tv: tv)
                 let remoteName = storage.loadRemoteName()
                 print("[TVDBG][Repo] connect start ip=\(tv.ipAddress) model=\(tv.model)")
 
@@ -108,6 +229,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                     let wsConnected = await connectUsingWebSocket(
                         tv: tv,
                         remoteName: remoteName,
+                        sessionID: sessionID,
                         continuation: continuation
                     )
 
@@ -117,6 +239,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                         _ = await connectUsingLegacy(
                             tv: tv,
                             remoteName: remoteName,
+                            sessionID: sessionID,
                             continuation: continuation
                         )
                     } else {
@@ -129,16 +252,18 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                         let wsConnected = await connectUsingWebSocket(
                             tv: tv,
                             remoteName: remoteName,
+                            sessionID: sessionID,
                             continuation: continuation
                         )
                         if !wsConnected {
-                            transportConnected = false
+                            await connectionCoordinator.markDisconnected(session: sessionID)
                             continuation.yield(.error(.connectionFailed("Encrypted TV websocket connection failed.")))
                         }
                     } else {
                         _ = await connectUsingStoredOrPairingSpc(
                             tv: tv,
                             remoteName: remoteName,
+                            sessionID: sessionID,
                             continuation: continuation
                         )
                     }
@@ -147,6 +272,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                     _ = await connectUsingLegacy(
                         tv: tv,
                         remoteName: remoteName,
+                        sessionID: sessionID,
                         continuation: continuation
                     )
                 }
@@ -157,7 +283,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 task.cancel()
                 Task {
                     // Keep SPC HTTP pairing session alive while waiting for PIN submission.
-                    guard !self.spcPairingInProgress else { return }
+                    let sessionID = await self.connectionCoordinator.currentSessionID()
+                    let shouldDisconnect = await self.connectionCoordinator.shouldDisconnectOnConnectTermination(
+                        session: sessionID
+                    )
+                    guard shouldDisconnect else { return }
                     await self.disconnect()
                 }
             }
@@ -165,20 +295,23 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     }
 
     func disconnect() async {
-        spcPairingInProgress = false
-        transportConnected = false
+        let disconnectSnapshot = await connectionCoordinator.invalidateForDisconnect()
         await webSocketClient.disconnect()
         smartViewClient.disconnect()
         await legacyRemoteClient.disconnect()
-        if activeTransport != .spc {
+        if disconnectSnapshot.activeTransport != .spc {
             await spcWebSocketClient.disconnect()
-            activeSpcCredentials = nil
         }
     }
 
     func completeEncryptedPairing(pin: String, for tv: SamsungTV) async throws {
         guard tv.protocolType == .encrypted else { return }
-        defer { spcPairingInProgress = false }
+        let sessionID = await connectionCoordinator.currentSessionID()
+        defer {
+            Task {
+                await self.connectionCoordinator.clearPairingInProgress(session: sessionID)
+            }
+        }
 
         let identifier = tokenIdentifier(for: tv)
         let variants = sensitiveStorage.loadSpcVariants(identifier: identifier)
@@ -199,23 +332,27 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     }
 
     func sendKey(_ key: RemoteKey, command: String) async throws {
-        guard transportConnected else {
+        let snapshot = await connectionCoordinator.sendSnapshot()
+        guard snapshot.isConnected else {
             throw TVError.notConnected
         }
-        switch activeTransport {
+        switch snapshot.activeTransport {
         case .webSocket:
             try await webSocketClient.sendKey(key, command: command)
         case .smartView:
             try await smartViewClient.sendKey(key, command: command)
         case .spc:
             let creds: TVUserDefaultsStorage.SpcCredentials
-            if let active = activeSpcCredentials {
+            if let active = snapshot.activeSpcCredentials {
                 creds = active
-            } else if let tv = currentTV,
+            } else if let tv = snapshot.currentTV,
                       let stored = sensitiveStorage.loadSpcCredentials(identifier: tokenIdentifier(for: tv)) {
                 // Race fallback: restore active credentials from persisted SPC credentials.
                 creds = stored
-                activeSpcCredentials = stored
+                await connectionCoordinator.setActiveSpcCredentials(
+                    stored,
+                    session: await connectionCoordinator.currentSessionID()
+                )
             } else {
                 throw TVError.spcTokenExpired
             }
@@ -232,10 +369,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     }
 
     func launchApp(appId: String) async throws {
-        guard transportConnected else {
+        let snapshot = await connectionCoordinator.sendSnapshot()
+        guard snapshot.isConnected else {
             throw TVError.notConnected
         }
-        switch activeTransport {
+        switch snapshot.activeTransport {
         case .webSocket:
             try await webSocketClient.launchApp(appId: appId)
         case .smartView:
@@ -306,10 +444,9 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     }
 
     func forgetPairing(for tv: SamsungTV) async throws {
-        clearPairingArtifacts(for: tv)
-        if isCurrentTV(tv) {
+        await clearPairingArtifacts(for: tv)
+        if await connectionCoordinator.isCurrentTV(tv) {
             await disconnect()
-            currentTV = nil
         }
     }
 
@@ -369,13 +506,18 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private func connectUsingWebSocket(
         tv: SamsungTV,
         remoteName: String,
+        sessionID: Int,
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
-        guard !spcPairingInProgress else {
+        guard await connectionCoordinator.isCurrentSession(sessionID) else {
+            return false
+        }
+        let shouldSkip = !(await connectionCoordinator.shouldDisconnectOnConnectTermination(session: sessionID))
+        guard !shouldSkip else {
             print("[TVDBG][WS] Skipping reconnect — SPC pairing in progress")
             return false
         }
-        activeTransport = .webSocket
+        await connectionCoordinator.setActiveTransport(.webSocket, session: sessionID)
         guard await isTVReachable(ip: tv.ipAddress) else {
             print("[TVDBG][Repo] tv not reachable ip=\(tv.ipAddress) skip websocket")
             return false
@@ -398,18 +540,21 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         var connected = false
         var hadError = false
         for await state in stream {
+            guard await connectionCoordinator.isCurrentSession(sessionID) else {
+                break
+            }
             continuation.yield(state)
             if case .connected = state {
                 connected = true
                 try? saveTV(tv)
-                transportConnected = true
+                await connectionCoordinator.markConnected(session: sessionID)
             }
             if case .error = state {
                 hadError = true
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
             if case .disconnected = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
         }
         return connected && !hadError
@@ -433,27 +578,31 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private func connectUsingLegacy(
         tv: SamsungTV,
         remoteName: String,
+        sessionID: Int,
         continuation: AsyncStream<TVConnectionState>.Continuation,
         emitErrors: Bool = true
     ) async -> Bool {
-        activeTransport = .legacy
+        await connectionCoordinator.setActiveTransport(.legacy, session: sessionID)
         print("[TVDBG][Repo] try legacy ip=\(tv.ipAddress)")
         let stream = await legacyRemoteClient.connect(to: tv, remoteName: remoteName)
         var connected = false
         for await state in stream {
+            guard await connectionCoordinator.isCurrentSession(sessionID) else {
+                break
+            }
             if emitErrors || !matchesError(state) {
                 continuation.yield(state)
             }
             if case .connected = state {
                 connected = true
                 try? saveTV(tv)
-                transportConnected = true
+                await connectionCoordinator.markConnected(session: sessionID)
             }
             if case .error = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
             if case .disconnected = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
         }
         print("[TVDBG][Repo] legacy result ip=\(tv.ipAddress) connected=\(connected)")
@@ -464,26 +613,30 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         tv: SamsungTV,
         remoteName: String,
         credentials: TVUserDefaultsStorage.SpcCredentials,
+        sessionID: Int,
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
-        activeTransport = .spc
-        activeSpcCredentials = credentials
+        await connectionCoordinator.setActiveTransport(.spc, session: sessionID)
+        await connectionCoordinator.setActiveSpcCredentials(credentials, session: sessionID)
         print("[TVDBG][Repo] try spc ip=\(tv.ipAddress)")
         let stream = await spcWebSocketClient.connect(ipAddress: tv.ipAddress, remoteName: remoteName)
         var everConnected = false
 
         for await state in stream {
+            guard await connectionCoordinator.isCurrentSession(sessionID) else {
+                break
+            }
             continuation.yield(state)
             if case .connected = state {
                 everConnected = true
-                transportConnected = true
+                await connectionCoordinator.markConnected(session: sessionID)
                 try? saveTV(tv)
             }
             if case .error = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
             if case .disconnected = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
         }
         return everConnected
@@ -492,9 +645,10 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private func connectUsingSmartView(
         tv: SamsungTV,
         remoteName: String,
+        sessionID: Int,
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
-        activeTransport = .smartView
+        await connectionCoordinator.setActiveTransport(.smartView, session: sessionID)
         print("[TVDBG][Repo] try smartview ip=\(tv.ipAddress)")
 
         let stream = smartViewClient.connect(to: tv, remoteName: remoteName)
@@ -502,20 +656,23 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         var connected = false
         var hadError = false
         for await state in stream {
+            guard await connectionCoordinator.isCurrentSession(sessionID) else {
+                break
+            }
             // SmartView may emit transient errors; still forward stream states
             // and keep consuming until final disconnect.
             continuation.yield(state)
             if case .connected = state {
                 connected = true
-                transportConnected = true
+                await connectionCoordinator.markConnected(session: sessionID)
                 try? saveTV(tv)
             }
             if case .error = state {
                 hadError = true
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
             if case .disconnected = state {
-                transportConnected = false
+                await connectionCoordinator.markDisconnected(session: sessionID)
             }
         }
 
@@ -525,6 +682,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private func connectUsingStoredOrPairingSpc(
         tv: SamsungTV,
         remoteName: String,
+        sessionID: Int,
         continuation: AsyncStream<TVConnectionState>.Continuation
     ) async -> Bool {
         let identifier = tokenIdentifier(for: tv)
@@ -533,6 +691,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 tv: tv,
                 remoteName: remoteName,
                 credentials: credentials,
+                sessionID: sessionID,
                 continuation: continuation
             )
             if connected {
@@ -541,15 +700,15 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
 
             // Stored SPC credentials are stale. Remove them and continue directly
             // into fresh PIN pairing in this same connect attempt.
-            transportConnected = false
-            activeSpcCredentials = nil
+            await connectionCoordinator.markDisconnected(session: sessionID)
+            await connectionCoordinator.setActiveSpcCredentials(nil, session: sessionID)
             sensitiveStorage.deleteSensitiveData(identifier: identifier)
         }
 
         do {
             let deviceID = storage.loadOrCreateSpcDeviceID()
             let variants = sensitiveStorage.loadSpcVariants(identifier: identifier)
-            spcPairingInProgress = true
+            await connectionCoordinator.markPairingInProgress(session: sessionID)
             continuation.yield(.pairing(countdown: 30))
             try await spcHandshakeClient.startPairing(
                 tv: tv,
@@ -557,10 +716,11 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 preferredStep0: variants?.step0,
                 preferredStep1: variants?.step1
             )
+            await connectionCoordinator.markPinRequired(session: sessionID)
             continuation.yield(.pinRequired(countdown: 60))
             return false
         } catch {
-            spcPairingInProgress = false
+            await connectionCoordinator.clearPairingInProgress(session: sessionID)
             if let tvError = error as? TVError {
                 continuation.yield(.error(tvError))
             } else {
@@ -582,7 +742,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         return "ip_\(tv.ipAddress)"
     }
 
-    private func clearPairingArtifacts(for tv: SamsungTV) {
+    private func clearPairingArtifacts(for tv: SamsungTV) async {
         var identifiers = Set<String>()
         identifiers.insert(tokenIdentifier(for: tv))
         identifiers.insert("ip_\(tv.ipAddress)")
@@ -593,17 +753,13 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         for identifier in identifiers where !identifier.isEmpty {
             sensitiveStorage.deleteSensitiveData(identifier: identifier)
         }
-        activeSpcCredentials = nil
-        spcPairingInProgress = false
-    }
-
-    private func isCurrentTV(_ tv: SamsungTV) -> Bool {
-        guard let currentTV else { return false }
-        if currentTV.id == tv.id { return true }
-        if !tv.macAddress.isEmpty && currentTV.macAddress.caseInsensitiveCompare(tv.macAddress) == .orderedSame {
-            return true
-        }
-        return currentTV.ipAddress == tv.ipAddress
+        await connectionCoordinator.setActiveSpcCredentials(
+            nil,
+            session: await connectionCoordinator.currentSessionID()
+        )
+        await connectionCoordinator.clearPairingInProgress(
+            session: await connectionCoordinator.currentSessionID()
+        )
     }
 
     private func isLikelyLegacyEncrypted(_ tv: SamsungTV) -> Bool {
