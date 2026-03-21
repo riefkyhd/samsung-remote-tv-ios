@@ -116,6 +116,27 @@ struct RemoteViewModelTests {
         #expect(vm.connectionState == .connected)
     }
 
+    @Test("Repeated settings open/close never disconnects until explicit remote exit")
+    func repeatedSettingsOpenDoesNotDisconnectUntilExplicitExit() async {
+        let repo = MockTVRepository()
+        let vm = makeViewModel(repository: repo)
+        vm.connectionState = .connected
+
+        vm.handleRemoteDisappear(shouldDisconnect: false)
+        vm.handleRemoteDisappear(shouldDisconnect: false)
+        vm.handleRemoteDisappear(shouldDisconnect: false)
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(repo.disconnectCalled == false)
+        #expect(vm.connectionState == .connected)
+
+        vm.handleRemoteDisappear(shouldDisconnect: true)
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(repo.disconnectCalled == true)
+        #expect(vm.connectionState == .disconnected)
+    }
+
     @Test("Explicit remote disappear disconnects session")
     func explicitDisappearDisconnects() async {
         let repo = MockTVRepository()

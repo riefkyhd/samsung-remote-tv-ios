@@ -27,6 +27,10 @@ struct RepositoryBoundaryUseCaseTests {
     @Test("GetQuickLaunchAppsUseCase returns curated shortcuts from repository")
     func getQuickLaunchAppsUseCaseReturnsRepositoryList() async throws {
         let repo = MockTVRepository()
+        repo.quickLaunchApps = [
+            TVApp(id: "11101200001", name: "Netflix", iconURL: nil),
+            TVApp(id: "3201512006963", name: "YouTube", iconURL: nil)
+        ]
         let sut = GetQuickLaunchAppsUseCase(repository: repo)
         let tv = SamsungTV(
             name: "TV",
@@ -38,8 +42,7 @@ struct RepositoryBoundaryUseCaseTests {
 
         let apps = try await sut.execute(for: tv)
 
-        #expect(apps.count == 1)
-        #expect(apps.first?.name == "TestApp")
+        #expect(apps == repo.quickLaunchApps)
     }
 
     @Test("ForgetPairingUseCase clears pairing state without removing saved tv")

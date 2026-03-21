@@ -49,6 +49,7 @@ struct TVRepositoryImplTests {
         let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
 
         try repository.saveTV(tv)
+        let savedBefore = try repository.getSavedTVs()
         storage.saveToken("token123", macAddress: tv.macAddress)
         try storage.saveSpcCredentials(.init(ctxUpperHex: "ABCD", sessionId: 5), identifier: tv.macAddress)
         try storage.saveSpcVariants(.init(step0: "s0", step1: "s1"), identifier: tv.macAddress)
@@ -61,7 +62,10 @@ struct TVRepositoryImplTests {
         #expect(secureStorage.loadToken(identifier: tv.macAddress) == nil)
         #expect(secureStorage.loadSpcCredentials(identifier: tv.macAddress) == nil)
         #expect(secureStorage.loadSpcVariants(identifier: tv.macAddress) == nil)
-        #expect(try repository.getSavedTVs().count == 1)
+        let savedAfter = try repository.getSavedTVs()
+        #expect(savedAfter.count == 1)
+        #expect(savedAfter.first?.id == savedBefore.first?.id)
+        #expect(savedAfter.first?.macAddress == savedBefore.first?.macAddress)
     }
 
     @Test("RemoveDevice clears pairing artifacts and deletes saved TV entry")
@@ -73,7 +77,15 @@ struct TVRepositoryImplTests {
         let repository = makeRepository(storage: storage, secureStorage: secureStorage)
         let tv = SamsungTV(name: "TV", ipAddress: "192.168.1.50", macAddress: "AA:BB:CC:DD:EE:FF", model: "Q", type: .encrypted)
 
+        let secondTV = SamsungTV(
+            name: "Bedroom TV",
+            ipAddress: "192.168.1.60",
+            macAddress: "AA:BB:CC:DD:EE:00",
+            model: "QN90",
+            type: .tizen
+        )
         try repository.saveTV(tv)
+        try repository.saveTV(secondTV)
         storage.saveToken("token123", macAddress: tv.macAddress)
         try storage.saveSpcCredentials(.init(ctxUpperHex: "ABCD", sessionId: 5), identifier: tv.macAddress)
         try storage.saveSpcVariants(.init(step0: "s0", step1: "s1"), identifier: tv.macAddress)
@@ -86,7 +98,9 @@ struct TVRepositoryImplTests {
         #expect(secureStorage.loadToken(identifier: tv.macAddress) == nil)
         #expect(secureStorage.loadSpcCredentials(identifier: tv.macAddress) == nil)
         #expect(secureStorage.loadSpcVariants(identifier: tv.macAddress) == nil)
-        #expect(try repository.getSavedTVs().isEmpty)
+        let remainingTVs = try repository.getSavedTVs()
+        #expect(remainingTVs.count == 1)
+        #expect(remainingTVs.first?.macAddress == secondTV.macAddress)
     }
 
     @Test("Sensitive storage migrates legacy values on read")
@@ -114,6 +128,25 @@ struct TVRepositoryImplTests {
         #expect(secure.loadToken(identifier: identifier) == "legacyToken")
         #expect(secure.loadSpcCredentials(identifier: identifier)?.sessionId == 1)
         #expect(secure.loadSpcVariants(identifier: identifier)?.step0 == "v0")
+    }
+
+    @Test("Quick Launch apps are curated shortcuts, not per-TV installed enumeration")
+    func quickLaunchAppsAreCuratedAndStable() async throws {
+        let defaults = UserDefaults(suiteName: "TVRepositoryImplTests.quickLaunch")!
+        defaults.removePersistentDomain(forName: "TVRepositoryImplTests.quickLaunch")
+        let storage = TVUserDefaultsStorage(userDefaults: defaults)
+        let secureStorage = TVSecureStorage(service: "TVRepositoryImplTests.quickLaunch.secure")
+        let repository = makeRepository(storage: storage, secureStorage: secureStorage)
+
+        let modernTV = SamsungTV(name: "Modern", ipAddress: "192.168.1.20", macAddress: "AA:BB:CC:DD:EE:10", model: "QN90", type: .tizen)
+        let legacyTV = SamsungTV(name: "Legacy", ipAddress: "192.168.1.21", macAddress: "AA:BB:CC:DD:EE:11", model: "D8000", type: .legacy)
+
+        let modernApps = try await repository.getQuickLaunchApps(for: modernTV)
+        let legacyApps = try await repository.getQuickLaunchApps(for: legacyTV)
+
+        #expect(modernApps == legacyApps)
+        #expect(modernApps.count == 4)
+        #expect(modernApps.map(\.name) == ["Netflix", "YouTube", "Prime Video", "Disney+"])
     }
 
     private func makeRepository(storage: TVUserDefaultsStorage, secureStorage: TVSecureStorage) -> TVRepositoryImpl {

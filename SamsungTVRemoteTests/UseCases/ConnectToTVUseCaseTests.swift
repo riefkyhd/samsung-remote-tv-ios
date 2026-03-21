@@ -31,9 +31,24 @@ struct ConnectToTVUseCaseTests {
         #expect(!states.contains(.pairing(countdown: 30)))
     }
 
-    @Test("SSL connection failure falls back to plain WS on port 8001")
-    func fallbackAssertion() {
-        #expect(true)
+    @Test("Connection stream preserves fallback-style state sequence from repository")
+    func fallbackStateSequenceIsPreserved() async {
+        let repo = MockTVRepository()
+        repo.connectionStates = [
+            .connecting,
+            .error(.connectionFailed("wss failed")),
+            .connecting,
+            .connected
+        ]
+        let sut = ConnectToTVUseCase(repository: repo)
+        let tv = SamsungTV(name: "TV", ipAddress: "1.1.1.1", macAddress: "AA", model: "Q", type: .tizen)
+
+        var states: [TVConnectionState] = []
+        for await state in sut.execute(tv: tv) {
+            states.append(state)
+        }
+
+        #expect(states == repo.connectionStates)
     }
 
     @Test("TV rejects pairing produces Error state with PairingRejected")
@@ -60,5 +75,28 @@ struct ConnectToTVUseCaseTests {
             delay = min(delay * 2, 30)
         }
         #expect(values == expected)
+    }
+
+    @Test("Reconnection stream emits connecting before repository state")
+    func reconnectionStreamStartsWithConnectingState() async {
+        let repo = MockTVRepository()
+        repo.connectionStates = [.error(.connectionFailed("network down"))]
+        let sut = ConnectToTVUseCase(repository: repo)
+        let tv = SamsungTV(name: "TV", ipAddress: "1.1.1.1", macAddress: "AA", model: "Q", type: .tizen)
+
+        let stream = sut.executeWithReconnection(tv: tv)
+        let collectTask = Task { () -> [TVConnectionState] in
+            var states: [TVConnectionState] = []
+            for await state in stream {
+                states.append(state)
+                if states.count == 2 { break }
+            }
+            return states
+        }
+        let states = await collectTask.value
+
+        #expect(states.count == 2)
+        #expect(states[0] == .connecting)
+        #expect(states[1] == .error(.connectionFailed("network down")))
     }
 }

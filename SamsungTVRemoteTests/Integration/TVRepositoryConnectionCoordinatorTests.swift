@@ -68,6 +68,45 @@ struct TVRepositoryConnectionCoordinatorTests {
         #expect(shouldDisconnect == false)
     }
 
+    @Test("Stale pairing-clear update cannot reset a newer active session")
+    func stalePairingClearIgnoredForNewSession() async {
+        let coordinator = TVRepositoryImpl.ConnectionCoordinator()
+        let tv = SamsungTV(
+            name: "TV",
+            ipAddress: "192.168.1.20",
+            macAddress: "AA:BB:CC:DD:EE:FF",
+            model: "Q",
+            type: .encrypted
+        )
+
+        let oldSession = await coordinator.beginConnect(tv: tv)
+        await coordinator.markPairingInProgress(session: oldSession)
+
+        let newSession = await coordinator.beginConnect(tv: tv)
+        await coordinator.clearPairingInProgress(session: oldSession)
+
+        #expect(await coordinator.isCurrentSession(newSession))
+        #expect(await isState(coordinator, .connecting))
+    }
+
+    @Test("Disconnected during pairing retains pairing lifecycle state")
+    func disconnectDuringPairingKeepsPairingState() async {
+        let coordinator = TVRepositoryImpl.ConnectionCoordinator()
+        let tv = SamsungTV(
+            name: "TV",
+            ipAddress: "192.168.1.20",
+            macAddress: "AA:BB:CC:DD:EE:FF",
+            model: "Q",
+            type: .encrypted
+        )
+
+        let session = await coordinator.beginConnect(tv: tv)
+        await coordinator.markPairingInProgress(session: session)
+        await coordinator.markDisconnected(session: session)
+
+        #expect(await isState(coordinator, .pairing))
+    }
+
     private func isState(
         _ coordinator: TVRepositoryImpl.ConnectionCoordinator,
         _ expected: TVRepositoryImpl.ConnectionLifecycleState

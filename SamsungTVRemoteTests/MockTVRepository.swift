@@ -13,6 +13,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
     var pairingForgottenForTVs: [SamsungTV] = []
     var removedTVs: [SamsungTV] = []
     var remoteNameValue = "SamsungTVRemote"
+    var quickLaunchApps: [TVApp] = [TVApp(id: "1", name: "TestApp", iconURL: nil)]
 
     func discoverTVs() -> AsyncStream<SamsungTV> {
         AsyncStream { continuation in
@@ -59,7 +60,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
 
     func getQuickLaunchApps(for tv: SamsungTV) async throws -> [TVApp] {
         _ = tv
-        return [TVApp(id: "1", name: "TestApp", iconURL: nil)]
+        return quickLaunchApps
     }
 
     func getSavedTVs() throws -> [SamsungTV] { savedTVs }
