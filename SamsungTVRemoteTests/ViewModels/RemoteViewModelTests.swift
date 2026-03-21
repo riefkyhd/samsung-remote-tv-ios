@@ -129,6 +129,42 @@ struct RemoteViewModelTests {
         #expect(vm.connectionState == .disconnected)
     }
 
+    @Test("Connected state distinguishes transport connected from ready")
+    func connectedVsReadyLabels() {
+        let vm = makeViewModel()
+        vm.connectionState = .connected
+        vm.hasConfirmedControl = false
+        #expect(vm.connectionLabel == "Connected")
+
+        vm.hasConfirmedControl = true
+        #expect(vm.connectionLabel == "Ready")
+    }
+
+    @Test("Second connecting attempt uses reconnecting label")
+    func reconnectingLabelAfterMultipleAttempts() async {
+        let repo = MockTVRepository()
+        repo.connectionStates = [.connecting, .connecting]
+        let vm = makeViewModel(repository: repo)
+
+        vm.connect()
+        try? await Task.sleep(for: .milliseconds(40))
+
+        #expect(vm.connectionLabel == "Reconnecting...")
+    }
+
+    @Test("PIN timeout message is actionable")
+    func pinTimeoutMessageActionable() async {
+        let repo = MockTVRepository()
+        repo.connectionStates = [.error(.pinTimeout)]
+        let vm = makeViewModel(repository: repo)
+
+        vm.connect()
+        try? await Task.sleep(for: .milliseconds(30))
+
+        #expect(vm.showError)
+        #expect(vm.errorMessage.contains("30 seconds"))
+    }
+
     private func makeViewModel(
         repository: MockTVRepository = MockTVRepository(),
         throwOnSend: Bool = false,

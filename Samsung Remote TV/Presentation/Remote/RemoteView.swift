@@ -435,7 +435,7 @@ struct RemoteView: View {
                 Text(viewModel.connectionLabel)
                     .font(.headline)
                     .foregroundStyle(.white)
-                Text(viewModel.errorMessage.isEmpty ? "Make sure your TV is on and on the same Wi-Fi." : viewModel.errorMessage)
+                Text(viewModel.connectionGuidance)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)

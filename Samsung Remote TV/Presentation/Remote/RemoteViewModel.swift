@@ -23,6 +23,7 @@ final class RemoteViewModel {
     var isSubmittingPin = false
     var isProbingVariants = false
     var capabilities: TVCapabilities { tv.capabilities }
+    var connectionAttemptCount = 0
 
     private let connectToTVUseCase: ConnectToTVUseCase
     private let sendRemoteKeyUseCase: SendRemoteKeyUseCase
@@ -72,10 +73,14 @@ final class RemoteViewModel {
         connectionTask = nil
         connectionState = .disconnected
         hasConfirmedControl = false
+        connectionAttemptCount = 0
         isProbingVariants = (tv.protocolType == .encrypted)
         connectionTask = Task {
             for await state in connectToTVUseCase.executeWithReconnection(tv: tv) {
                 connectionState = state
+                if case .connecting = state {
+                    connectionAttemptCount += 1
+                }
                 if case .disconnected = state {
                     hasConfirmedControl = false
                     isProbingVariants = false
@@ -100,7 +105,8 @@ final class RemoteViewModel {
                 }
                 if case .connected = state {
                     isProbingVariants = false
-                    hasConfirmedControl = true
+                    // Keep this false until the first successful command/app action confirms control path.
+                    hasConfirmedControl = false
                 }
             }
         }
@@ -115,6 +121,7 @@ final class RemoteViewModel {
         }
         connectionState = .disconnected
         hasConfirmedControl = false
+        connectionAttemptCount = 0
     }
 
     func handleRemoteDisappear(shouldDisconnect: Bool) {
@@ -246,17 +253,41 @@ final class RemoteViewModel {
     var connectionLabel: String {
         switch connectionState {
         case .connected:
-            return "Connected"
+            return hasConfirmedControl ? "Ready" : "Connected"
         case .connecting:
-            return "Connecting..."
+            return connectionAttemptCount > 1 ? "Reconnecting..." : "Connecting..."
         case .pairing:
-            return "Pairing..."
+            return "Discovering Pairing..."
         case .pinRequired:
-            return "Enter PIN"
+            return "Enter TV PIN"
         case .disconnected:
             return "Disconnected"
         case .error(let error):
             return error.localizedDescription
+        }
+    }
+
+    var connectionGuidance: String {
+        if !errorMessage.isEmpty {
+            return errorMessage
+        }
+        switch connectionState {
+        case .connected:
+            return hasConfirmedControl
+                ? "Controls are ready. Use the remote below."
+                : "Connection established. Send a command to confirm control."
+        case .connecting:
+            return connectionAttemptCount > 1
+                ? "Trying to restore the session. Keep the TV on and on the same Wi-Fi."
+                : "Connecting to the TV over your local network."
+        case .pairing:
+            return "Preparing encrypted pairing with this TV model."
+        case .pinRequired:
+            return "Enter the PIN shown on your TV before the timer expires."
+        case .disconnected:
+            return "Make sure your TV is on and on the same Wi-Fi."
+        case .error:
+            return "Check TV power and Wi-Fi, then retry."
         }
     }
 
@@ -338,22 +369,28 @@ final class RemoteViewModel {
     private func userFriendlyMessage(for error: TVError) -> String {
         switch error {
         case .pairingRejected:
-            return "Incorrect PIN. Please try again."
+            return "Incorrect PIN. Check the TV screen and enter the new PIN."
         case .connectionFailed, .notConnected, .spcHandshakeFailed:
-            return "Could not connect to TV. Please make sure the TV is on and connected to the same Wi-Fi."
+            return "Could not connect to TV. Keep TV on the same Wi-Fi, then tap Retry Connection."
         case .spcTokenExpired:
-            return "Pairing expired. Please reconnect to the TV."
+            return "Pairing session expired. Open Settings > Forget Pairing, then connect again."
         case .spcPairingFailed(let reason):
             if reason.lowercased().contains("pin page") {
-                return "Could not open PIN on TV. Please try again."
+                return "Could not open the PIN page on TV. Keep TV awake and try again."
             }
-            return "Could not start pairing. Please try again."
+            return "Could not complete pairing. Retry, or use Forget Pairing in Settings."
+        case .unsupportedProtocol:
+            return "This TV protocol is not supported for this action."
+        case .appLaunchFailed:
+            return "Quick Launch failed. Ensure the app is available on your TV and try again."
+        case .invalidResponse:
+            return "TV replied unexpectedly. Retry the connection."
         case .notOnWifi:
             return "Please connect to Wi-Fi to control your TV."
         case .pinTimeout:
-            return "PIN entry timed out. Please try again."
+            return "PIN timed out. Request a new PIN and enter it within 30 seconds."
         default:
-            return "Could not connect. Please make sure the TV is on."
+            return "Action failed. Check TV power/Wi-Fi and retry."
         }
     }
 }
