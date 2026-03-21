@@ -12,7 +12,7 @@ protocol TVRepository: Sendable {
     func launchApp(appId: String) async throws
 
     func wakeOnLan(macAddress: String) async throws
-    func getInstalledApps(for tv: SamsungTV) async throws -> [TVApp]
+    func getQuickLaunchApps(for tv: SamsungTV) async throws -> [TVApp]
 
     func getSavedTVs() throws -> [SamsungTV]
     func saveTV(_ tv: SamsungTV) throws

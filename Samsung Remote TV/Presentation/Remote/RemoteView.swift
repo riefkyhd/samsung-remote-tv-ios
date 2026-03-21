@@ -70,7 +70,7 @@ struct RemoteView: View {
         }
         .onAppear {
             viewModel.connect()
-            viewModel.loadApps()
+            viewModel.loadQuickLaunchApps()
         }
         .onDisappear {
             viewModel.handleRemoteDisappear(shouldDisconnect: !isSettingsPresented)
@@ -81,7 +81,7 @@ struct RemoteView: View {
             }
         }
         .sheet(isPresented: $viewModel.isAppSheetPresented) {
-            AppLauncherSheet(apps: viewModel.installedApps) { app in
+            AppLauncherSheet(apps: viewModel.quickLaunchApps) { app in
                 viewModel.launchApp(app)
             }
             .presentationDetents([.medium, .large])
@@ -226,7 +226,7 @@ struct RemoteView: View {
                 softButton("HDMI", style: .light) { viewModel.sendKey(.KEY_HDMI) }
             }
 
-            Button("Open Apps") {
+            Button("Quick Launch") {
                 viewModel.isAppSheetPresented = true
             }
             .buttonStyle(.borderedProminent)

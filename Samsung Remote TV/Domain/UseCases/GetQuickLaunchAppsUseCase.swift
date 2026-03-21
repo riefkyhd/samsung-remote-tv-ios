@@ -1,6 +1,6 @@
 import Foundation
 
-struct GetInstalledAppsUseCase: Sendable {
+struct GetQuickLaunchAppsUseCase: Sendable {
     private let repository: any TVRepository
 
     init(repository: any TVRepository) {
@@ -8,6 +8,6 @@ struct GetInstalledAppsUseCase: Sendable {
     }
 
     func execute(for tv: SamsungTV) async throws -> [TVApp] {
-        try await repository.getInstalledApps(for: tv)
+        try await repository.getQuickLaunchApps(for: tv)
     }
 }

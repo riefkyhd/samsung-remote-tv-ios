@@ -9,7 +9,7 @@ final class AppDependencies {
     let sendRemoteKeyUseCase: SendRemoteKeyUseCase
     let getSavedTVsUseCase: GetSavedTVsUseCase
     let wakeOnLanUseCase: WakeOnLanUseCase
-    let getInstalledAppsUseCase: GetInstalledAppsUseCase
+    let getQuickLaunchAppsUseCase: GetQuickLaunchAppsUseCase
     let pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase
     let disconnectTVUseCase: DisconnectTVUseCase
     let launchTVAppUseCase: LaunchTVAppUseCase
@@ -51,7 +51,7 @@ final class AppDependencies {
         self.sendRemoteKeyUseCase = SendRemoteKeyUseCase(repository: repository)
         self.getSavedTVsUseCase = GetSavedTVsUseCase(repository: repository)
         self.wakeOnLanUseCase = WakeOnLanUseCase(repository: repository)
-        self.getInstalledAppsUseCase = GetInstalledAppsUseCase(repository: repository)
+        self.getQuickLaunchAppsUseCase = GetQuickLaunchAppsUseCase(repository: repository)
         self.pairWithEncryptedTVUseCase = PairWithEncryptedTVUseCase(repository: repository)
         self.disconnectTVUseCase = DisconnectTVUseCase(repository: repository)
         self.launchTVAppUseCase = LaunchTVAppUseCase(repository: repository)

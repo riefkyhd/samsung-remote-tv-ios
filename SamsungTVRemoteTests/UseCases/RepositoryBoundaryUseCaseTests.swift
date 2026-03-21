@@ -24,6 +24,24 @@ struct RepositoryBoundaryUseCaseTests {
         #expect(repo.launchedAppId == "111299001912")
     }
 
+    @Test("GetQuickLaunchAppsUseCase returns curated shortcuts from repository")
+    func getQuickLaunchAppsUseCaseReturnsRepositoryList() async throws {
+        let repo = MockTVRepository()
+        let sut = GetQuickLaunchAppsUseCase(repository: repo)
+        let tv = SamsungTV(
+            name: "TV",
+            ipAddress: "192.168.1.20",
+            macAddress: "AA:BB:CC:DD:EE:FF",
+            model: "Q",
+            type: .tizen
+        )
+
+        let apps = try await sut.execute(for: tv)
+
+        #expect(apps.count == 1)
+        #expect(apps.first?.name == "TestApp")
+    }
+
     @Test("ForgetPairingUseCase clears pairing state without removing saved tv")
     func forgetPairingUseCaseKeepsSavedTv() async throws {
         let repo = MockTVRepository()

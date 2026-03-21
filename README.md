@@ -1,6 +1,6 @@
 # Samsung Remote TV (iOS)
 
-Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local network, pairing with encrypted models, and controlling TV functions (power, volume, channel, D-pad, media, apps, and trackpad-like navigation).
+Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local network, pairing with encrypted models, and controlling TV functions (power, volume, channel, D-pad, media, quick-launch shortcuts, and trackpad-like navigation).
 
 ## Features
 
@@ -13,7 +13,7 @@ Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local netw
 - Remote controls:
   - D-pad, number pad, media controls, color buttons
   - Volume/channel controls
-  - App launcher sheet
+  - Quick Launch sheet (curated app shortcuts)
   - Trackpad mode
 - Connection state + reconnect flow
 - Wake-on-LAN for supported models

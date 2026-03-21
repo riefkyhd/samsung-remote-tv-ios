@@ -12,7 +12,7 @@ final class RemoteViewModel {
     var showError = false
     var errorMessage = ""
     var numberPadVisible = false
-    var installedApps: [TVApp] = []
+    var quickLaunchApps: [TVApp] = []
     var isAppSheetPresented = false
     var isPlaying = false
     var hasConfirmedControl = false
@@ -26,7 +26,7 @@ final class RemoteViewModel {
 
     private let connectToTVUseCase: ConnectToTVUseCase
     private let sendRemoteKeyUseCase: SendRemoteKeyUseCase
-    private let getInstalledAppsUseCase: GetInstalledAppsUseCase
+    private let getQuickLaunchAppsUseCase: GetQuickLaunchAppsUseCase
     private let wakeOnLanUseCase: WakeOnLanUseCase
     private let pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase
     private let disconnectTVUseCase: DisconnectTVUseCase
@@ -38,7 +38,7 @@ final class RemoteViewModel {
         tv: SamsungTV,
         connectToTVUseCase: ConnectToTVUseCase,
         sendRemoteKeyUseCase: SendRemoteKeyUseCase,
-        getInstalledAppsUseCase: GetInstalledAppsUseCase,
+        getQuickLaunchAppsUseCase: GetQuickLaunchAppsUseCase,
         wakeOnLanUseCase: WakeOnLanUseCase,
         pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase,
         disconnectTVUseCase: DisconnectTVUseCase,
@@ -47,7 +47,7 @@ final class RemoteViewModel {
         self.tv = tv
         self.connectToTVUseCase = connectToTVUseCase
         self.sendRemoteKeyUseCase = sendRemoteKeyUseCase
-        self.getInstalledAppsUseCase = getInstalledAppsUseCase
+        self.getQuickLaunchAppsUseCase = getQuickLaunchAppsUseCase
         self.wakeOnLanUseCase = wakeOnLanUseCase
         self.pairWithEncryptedTVUseCase = pairWithEncryptedTVUseCase
         self.disconnectTVUseCase = disconnectTVUseCase
@@ -59,7 +59,7 @@ final class RemoteViewModel {
             tv: tv,
             connectToTVUseCase: dependencies.connectToTVUseCase,
             sendRemoteKeyUseCase: dependencies.sendRemoteKeyUseCase,
-            getInstalledAppsUseCase: dependencies.getInstalledAppsUseCase,
+            getQuickLaunchAppsUseCase: dependencies.getQuickLaunchAppsUseCase,
             wakeOnLanUseCase: dependencies.wakeOnLanUseCase,
             pairWithEncryptedTVUseCase: dependencies.pairWithEncryptedTVUseCase,
             disconnectTVUseCase: dependencies.disconnectTVUseCase,
@@ -167,14 +167,14 @@ final class RemoteViewModel {
         numberPadVisible.toggle()
     }
 
-    func loadApps() {
+    func loadQuickLaunchApps() {
         guard capabilities.appLaunch else {
-            installedApps = []
+            quickLaunchApps = []
             return
         }
         Task {
             do {
-                installedApps = try await getInstalledAppsUseCase.execute(for: tv)
+                quickLaunchApps = try await getQuickLaunchAppsUseCase.execute(for: tv)
             } catch {
                 showError = true
                 if let tvError = error as? TVError {

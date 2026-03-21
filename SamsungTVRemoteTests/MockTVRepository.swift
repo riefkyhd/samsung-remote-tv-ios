@@ -57,7 +57,7 @@ final class MockTVRepository: TVRepository, @unchecked Sendable {
         guard macAddress.contains(":") else { throw TVError.invalidMacAddress }
     }
 
-    func getInstalledApps(for tv: SamsungTV) async throws -> [TVApp] {
+    func getQuickLaunchApps(for tv: SamsungTV) async throws -> [TVApp] {
         _ = tv
         return [TVApp(id: "1", name: "TestApp", iconURL: nil)]
     }

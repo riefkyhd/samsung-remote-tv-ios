@@ -406,8 +406,9 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         try await sendWakePacket(data: packet, port: 7)
     }
 
-    func getInstalledApps(for tv: SamsungTV) async throws -> [TVApp] {
+    func getQuickLaunchApps(for tv: SamsungTV) async throws -> [TVApp] {
         _ = tv
+        // Curated cross-model shortcuts for v1. This is not installed-app enumeration.
         return [
             TVApp(id: "11101200001", name: "Netflix", iconURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg")),
             TVApp(id: "3201512006963", name: "YouTube", iconURL: URL(string: "https://upload.wikimedia.org/wikipedia/commons/b/b8/YouTube_Logo_2017.svg")),

@@ -148,7 +148,7 @@ struct RemoteViewModelTests {
             tv: resolvedTV,
             connectToTVUseCase: ConnectToTVUseCase(repository: repository),
             sendRemoteKeyUseCase: SendRemoteKeyUseCase(repository: repository),
-            getInstalledAppsUseCase: GetInstalledAppsUseCase(repository: repository),
+            getQuickLaunchAppsUseCase: GetQuickLaunchAppsUseCase(repository: repository),
             wakeOnLanUseCase: WakeOnLanUseCase(repository: repository),
             pairWithEncryptedTVUseCase: PairWithEncryptedTVUseCase(repository: repository),
             disconnectTVUseCase: DisconnectTVUseCase(repository: repository),
