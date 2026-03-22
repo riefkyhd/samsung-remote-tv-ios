@@ -1,22 +1,28 @@
 # Samsung Remote TV (iOS)
 
-Samsung Remote TV is a SwiftUI iOS app for discovering Samsung TVs on local network, pairing with encrypted models, and controlling TV functions (power, volume, channel, D-pad, media, quick-launch shortcuts, and trackpad-like navigation).
+Samsung Remote TV is a SwiftUI iOS app for local-network Samsung TV control, including discovery, pairing, and remote actions such as power, volume, channel, D-pad, media keys, Quick Launch shortcuts, and trackpad-like navigation (when supported by the TV profile).
 
 ## Features
 
-- Auto discovery via Bonjour, SSDP, and IP-range scanning
+- Discovery via Bonjour, SSDP, and IP-range scanning (best-effort, network-dependent)
 - Saved TVs with rename, forget pairing, and remove device support
 - Protocol handling for:
   - Modern WebSocket TVs
   - Legacy encrypted SPC TVs (PIN pairing)
   - Legacy remote transport
-- Remote controls:
+- Remote controls (capability-gated by TV/protocol):
   - D-pad, number pad, media controls, color buttons
   - Volume/channel controls
   - Quick Launch sheet (curated app shortcuts)
   - Trackpad mode
 - Connection state + reconnect flow
-- Wake-on-LAN for supported models
+- Wake-on-LAN for compatible models/network setups (best-effort)
+
+## Support Boundaries
+
+- Full support and best-effort boundaries are defined in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md).
+- Release readiness criteria are defined in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+- The launcher feature is **Quick Launch** (curated shortcuts), not guaranteed installed-app enumeration.
 
 ## Project Structure
 
