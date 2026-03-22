@@ -32,6 +32,7 @@ struct SettingsViewModelTests {
 
         #expect(repo.pairingForgottenForTVs.count == 1)
         #expect(repo.savedTVs.count == 1)
+        #expect(sut.alertMessage == nil)
     }
 
     @Test("removeDevice removes saved tv")
@@ -46,6 +47,7 @@ struct SettingsViewModelTests {
 
         #expect(repo.removedTVs.count == 1)
         #expect(repo.savedTVs.isEmpty)
+        #expect(sut.alertMessage == nil)
     }
 
     @Test("saveRemoteName writes through use case")

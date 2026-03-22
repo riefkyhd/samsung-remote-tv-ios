@@ -66,7 +66,13 @@ final class SettingsViewModel {
             do {
                 try await forgetPairingUseCase.execute(tv)
                 load()
-                print("[TVDBG][Settings] forgot pairing for=\(tv.name)")
+                DiagnosticsLogger.log(
+                    .lifecycle,
+                    "forget pairing completed",
+                    metadata: [
+                        "tv": DiagnosticsLogger.redactIdentifier(tv.name)
+                    ]
+                )
             } catch {
                 alertMessage = error.localizedDescription
             }
@@ -78,7 +84,13 @@ final class SettingsViewModel {
             do {
                 try await removeDeviceUseCase.execute(tv)
                 load()
-                print("[TVDBG][Settings] removed device=\(tv.name)")
+                DiagnosticsLogger.log(
+                    .lifecycle,
+                    "remove device completed",
+                    metadata: [
+                        "tv": DiagnosticsLogger.redactIdentifier(tv.name)
+                    ]
+                )
             } catch {
                 alertMessage = error.localizedDescription
             }

@@ -15,7 +15,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveToken(token, identifier: identifier)
             legacy.deleteToken(macAddress: identifier)
         } catch {
-            print("[TVDBG][Secure] token save failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure token save failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
     }
 
@@ -32,7 +38,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveToken(legacyValue, identifier: identifier)
             legacy.deleteToken(macAddress: identifier)
         } catch {
-            print("[TVDBG][Secure] token migration failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure token migration failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
         return legacyValue
     }
@@ -43,7 +55,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveSpcCredentials(credentials, identifier: identifier)
             legacy.deleteSpcCredentials(identifier: identifier)
         } catch {
-            print("[TVDBG][Secure] spc credentials save failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure spc credentials save failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
     }
 
@@ -60,7 +78,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveSpcCredentials(legacyValue, identifier: identifier)
             legacy.deleteSpcCredentials(identifier: identifier)
         } catch {
-            print("[TVDBG][Secure] spc credentials migration failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure spc credentials migration failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
         return legacyValue
     }
@@ -71,7 +95,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveSpcVariants(variants, identifier: identifier)
             legacy.deleteSpcVariants(identifier: identifier)
         } catch {
-            print("[TVDBG][Secure] spc variants save failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure spc variants save failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
     }
 
@@ -88,7 +118,13 @@ struct TVSensitiveStorage: Sendable {
             try secure.saveSpcVariants(legacyValue, identifier: identifier)
             legacy.deleteSpcVariants(identifier: identifier)
         } catch {
-            print("[TVDBG][Secure] spc variants migration failed identifier=\(identifier)")
+            DiagnosticsLogger.log(
+                .error,
+                "secure spc variants migration failed",
+                metadata: [
+                    "identifier": DiagnosticsLogger.redactIdentifier(identifier)
+                ]
+            )
         }
         return legacyValue
     }
