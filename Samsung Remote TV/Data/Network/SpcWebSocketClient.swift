@@ -1,6 +1,6 @@
 import Foundation
 
-actor SpcWebSocketClient {
+actor SpcWebSocketClient: SpcWebSocketTransport {
     private typealias PendingCommand = (key: RemoteKey, ctxHex: String, sessionId: Int)
 
     private var task: URLSessionWebSocketTask?
@@ -15,7 +15,7 @@ actor SpcWebSocketClient {
     private var receivedFirstResponse = false
     private var queuedFirstCommand = false
 
-    func connect(ipAddress: String, remoteName: String) -> AsyncStream<TVConnectionState> {
+    func connect(ipAddress: String, remoteName: String) async -> AsyncStream<TVConnectionState> {
         _ = remoteName
         resetSendQueue()
 
@@ -41,7 +41,7 @@ actor SpcWebSocketClient {
         }
     }
 
-    func disconnect() {
+    func disconnect() async {
         print("[TVDBG][SPC] ws disconnect")
         receiveTask?.cancel()
         heartbeatTask?.cancel()

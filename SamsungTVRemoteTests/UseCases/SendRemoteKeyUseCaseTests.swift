@@ -41,7 +41,8 @@ struct SendRemoteKeyUseCaseTests {
     @Test("Rapid sends within 100ms are debounced to single command")
     func debounceWorks() async throws {
         let repo = MockTVRepository()
-        let sut = SendRemoteKeyUseCase(repository: repo)
+        let debouncer = RemoteKeyDebouncer(minimumInterval: 10)
+        let sut = SendRemoteKeyUseCase(repository: repo, debouncer: debouncer)
 
         try await sut.execute(.KEY_UP)
         try await sut.execute(.KEY_UP)

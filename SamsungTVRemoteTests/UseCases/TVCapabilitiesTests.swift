@@ -23,7 +23,7 @@ struct TVCapabilitiesTests {
         #expect(!caps.encryptedPairing)
     }
 
-    @Test("Encrypted TV disables wake, app launch, and trackpad")
+    @Test("Encrypted TV disables wake/app launch but allows best-effort trackpad")
     func encryptedCapabilities() {
         let tv = SamsungTV(
             name: "Encrypted",
@@ -36,7 +36,7 @@ struct TVCapabilitiesTests {
 
         #expect(!caps.wakeOnLan)
         #expect(!caps.appLaunch)
-        #expect(!caps.trackpad)
+        #expect(caps.trackpad)
         #expect(caps.encryptedPairing)
         #expect(caps.numberPad)
         #expect(caps.mediaTransport)

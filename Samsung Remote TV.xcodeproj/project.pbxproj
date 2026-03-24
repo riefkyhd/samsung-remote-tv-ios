@@ -230,7 +230,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-				shellScript = "\"${PROJECT_DIR}/scripts/strip_smartview_archs.sh\"\ntouch \"${DERIVED_FILE_DIR}/strip_smartview_archs.stamp\"\n";
+			shellScript = "\"${PROJECT_DIR}/scripts/strip_smartview_archs.sh\"\ntouch \"${DERIVED_FILE_DIR}/strip_smartview_archs.stamp\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -392,6 +392,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
 					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
+					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
 				);
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
@@ -430,6 +431,7 @@
 				ENABLE_PREVIEWS = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
+					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
 					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
 					"$(PROJECT_DIR)/Samsung\\ Remote\\ TV/Frameworks",
 				);

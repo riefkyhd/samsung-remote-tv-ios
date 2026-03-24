@@ -1,12 +1,6 @@
 import Foundation
 
-actor SpcHandshakeClient {
-    struct PairingOutcome: Sendable {
-        let credentials: TVUserDefaultsStorage.SpcCredentials
-        let step0Variant: String
-        let step1Variant: String
-    }
-
+actor SpcHandshakeClient: SpcHandshakeTransport {
     struct Step2SessionResult: Sendable {
         let sessionId: Int
     }
@@ -55,7 +49,11 @@ actor SpcHandshakeClient {
         deviceID: String,
         preferredStep0: String?,
         preferredStep1: String?
-    ) async throws -> PairingOutcome {
+    ) async throws -> (
+        credentials: TVUserDefaultsStorage.SpcCredentials,
+        step0Variant: String,
+        step1Variant: String
+    ) {
         _ = deviceID
         _ = preferredStep0
         _ = preferredStep1
@@ -109,14 +107,14 @@ actor SpcHandshakeClient {
             ctxUpperHex: ctxUpperHex,
             sessionId: sessionResult.sessionId
         )
-        return PairingOutcome(
+        return (
             credentials: creds,
             step0Variant: "CONFIRMED",
             step1Variant: "CONFIRMED"
         )
     }
 
-    func cancelPairing(tv: SamsungTV) {
+    func cancelPairing(tv: SamsungTV) async {
         pendingByIP.remove(tv.ipAddress)
     }
 }

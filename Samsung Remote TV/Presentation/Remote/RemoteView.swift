@@ -8,6 +8,9 @@ struct RemoteView: View {
     @State private var showTrackpad = false
     @State private var isPinInputActive = false
     @State private var isSettingsPresented = false
+    @State private var lightHaptic = UIImpactFeedbackGenerator(style: .light)
+    @State private var mediumHaptic = UIImpactFeedbackGenerator(style: .medium)
+    @State private var heavyHaptic = UIImpactFeedbackGenerator(style: .heavy)
 
     init(viewModel: RemoteViewModel) {
         _viewModel = State(initialValue: viewModel)
@@ -72,6 +75,7 @@ struct RemoteView: View {
             }
         }
         .onAppear {
+            prepareHaptics()
             viewModel.connect()
             viewModel.loadQuickLaunchApps()
         }
@@ -258,31 +262,7 @@ struct RemoteView: View {
             }
 
 #if DEBUG
-            DisclosureGroup(L10n.text("remote.diagnostics", "Diagnostics")) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(viewModel.diagnosticsSummary)
-                        .font(.caption2.monospaced())
-                        .foregroundStyle(.secondary)
-                    if let lastErrorSummary = viewModel.lastErrorSummary {
-                        Text("\(L10n.text("remote.last_error", "Last Error")): \(lastErrorSummary)")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                    } else {
-                        Text("\(L10n.text("remote.last_error", "Last Error")): \(L10n.text("remote.none", "none"))")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    Divider()
-                    ForEach(Array(viewModel.diagnosticsEvents.suffix(8).enumerated()), id: \.offset) { _, event in
-                        Text(event)
-                            .font(.caption2.monospaced())
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-                .padding(.top, 6)
-            }
-            .tint(.white)
+            diagnosticsSection
 #endif
         }
         .padding(16)
@@ -298,8 +278,61 @@ struct RemoteView: View {
     }
 
     private func haptic(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) {
-        UIImpactFeedbackGenerator(style: style).impactOccurred()
+        let generator: UIImpactFeedbackGenerator
+        switch style {
+        case .light:
+            generator = lightHaptic
+        case .medium:
+            generator = mediumHaptic
+        case .heavy:
+            generator = heavyHaptic
+        default:
+            generator = lightHaptic
+        }
+        generator.impactOccurred()
+        generator.prepare()
     }
+
+    private func prepareHaptics() {
+        lightHaptic.prepare()
+        mediumHaptic.prepare()
+        heavyHaptic.prepare()
+    }
+
+#if DEBUG
+    private var diagnosticsSection: some View {
+        DisclosureGroup(L10n.text("remote.diagnostics", "Diagnostics")) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(viewModel.diagnosticsSummary)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(Color.white.opacity(0.9))
+                if let lastErrorSummary = viewModel.lastErrorSummary {
+                    Text("\(L10n.text("remote.last_error", "Last Error")): \(lastErrorSummary)")
+                        .font(.caption2)
+                        .foregroundStyle(Color.orange.opacity(0.95))
+                } else {
+                    Text("\(L10n.text("remote.last_error", "Last Error")): \(L10n.text("remote.none", "none"))")
+                        .font(.caption2)
+                        .foregroundStyle(Color.white.opacity(0.82))
+                }
+                Divider()
+                ForEach(Array(viewModel.diagnosticsEvents.suffix(8).enumerated()), id: \.offset) { _, event in
+                    Text(event)
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(Color.white.opacity(0.88))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.top, 6)
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.black.opacity(0.28))
+            )
+        }
+        .tint(.white)
+    }
+#endif
 
     private func softButton(
         _ title: String,

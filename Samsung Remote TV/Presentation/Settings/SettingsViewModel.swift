@@ -6,7 +6,9 @@ import Observation
 final class SettingsViewModel {
     var savedTVs: [SamsungTV] = []
     var remoteName = "SamsungTVRemote"
+    var alertTitle = L10n.text("common.error", "Error")
     var alertMessage: String?
+    private var pairingClearedTVIDs: Set<UUID> = []
 
     private let getSavedTVsUseCase: GetSavedTVsUseCase
     private let forgetPairingUseCase: ForgetPairingUseCase
@@ -41,6 +43,8 @@ final class SettingsViewModel {
     func load() {
         savedTVs = (try? getSavedTVsUseCase.execute()) ?? []
         remoteName = getRemoteNameUseCase.execute()
+        let visibleIDs = Set(savedTVs.map(\.id))
+        pairingClearedTVIDs = pairingClearedTVIDs.intersection(visibleIDs)
     }
 
     func rename(tv: SamsungTV, to newName: String) {
@@ -48,6 +52,7 @@ final class SettingsViewModel {
             try getSavedTVsUseCase.rename(id: tv.id, name: newName)
             load()
         } catch {
+            alertTitle = L10n.text("common.error", "Error")
             alertMessage = error.localizedDescription
         }
     }
@@ -57,6 +62,7 @@ final class SettingsViewModel {
             try getSavedTVsUseCase.delete(tv)
             load()
         } catch {
+            alertTitle = L10n.text("common.error", "Error")
             alertMessage = error.localizedDescription
         }
     }
@@ -66,6 +72,9 @@ final class SettingsViewModel {
             do {
                 try await forgetPairingUseCase.execute(tv)
                 load()
+                pairingClearedTVIDs.insert(tv.id)
+                alertTitle = L10n.text("settings.pairing_reset_title", "Pairing Reset")
+                alertMessage = L10n.text("settings.pairing_reset_success", "Pairing data cleared. The next connection will require a new PIN.")
                 DiagnosticsLogger.log(
                     .lifecycle,
                     "forget pairing completed",
@@ -74,6 +83,7 @@ final class SettingsViewModel {
                     ]
                 )
             } catch {
+                alertTitle = L10n.text("common.error", "Error")
                 alertMessage = error.localizedDescription
             }
         }
@@ -84,6 +94,9 @@ final class SettingsViewModel {
             do {
                 try await removeDeviceUseCase.execute(tv)
                 load()
+                pairingClearedTVIDs.remove(tv.id)
+                alertTitle = L10n.text("settings.device_removed_title", "Device Removed")
+                alertMessage = L10n.text("settings.device_removed_success", "Saved TV and pairing data were removed.")
                 DiagnosticsLogger.log(
                     .lifecycle,
                     "remove device completed",
@@ -92,6 +105,7 @@ final class SettingsViewModel {
                     ]
                 )
             } catch {
+                alertTitle = L10n.text("common.error", "Error")
                 alertMessage = error.localizedDescription
             }
         }
@@ -101,7 +115,19 @@ final class SettingsViewModel {
         do {
             try setRemoteNameUseCase.execute(remoteName)
         } catch {
+            alertTitle = L10n.text("common.error", "Error")
             alertMessage = error.localizedDescription
         }
+    }
+
+    func isPairingCleared(for tv: SamsungTV) -> Bool {
+        pairingClearedTVIDs.contains(tv.id)
+    }
+
+    func forgetPairingButtonTitle(for tv: SamsungTV) -> String {
+        if isPairingCleared(for: tv) {
+            return L10n.text("settings.pairing_cleared", "Pairing Cleared")
+        }
+        return L10n.text("settings.forget_pairing", "Forget Pairing")
     }
 }

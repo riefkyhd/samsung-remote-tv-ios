@@ -20,10 +20,11 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button(L10n.text("settings.forget_pairing", "Forget Pairing")) {
+                        Button(viewModel.forgetPairingButtonTitle(for: tv)) {
                             viewModel.forgetPairing(tv)
                         }
                         .font(.caption)
+                        .foregroundStyle(viewModel.isPairingCleared(for: tv) ? .green : .accentColor)
                     }
                     .swipeActions {
                         Button(role: .destructive) {
@@ -60,7 +61,7 @@ struct SettingsView: View {
             viewModel.load()
         }
         .alert(
-            L10n.text("common.error", "Error"),
+            viewModel.alertTitle,
             isPresented: Binding(
                 get: { viewModel.alertMessage != nil },
                 set: { if !$0 { viewModel.alertMessage = nil } }

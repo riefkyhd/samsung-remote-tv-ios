@@ -33,7 +33,7 @@ struct TVCapabilities: Sendable, Equatable {
         return TVCapabilities(
             wakeOnLan: isModern && hasMAC,
             appLaunch: isModern,
-            trackpad: isModern,
+            trackpad: isModern || isEncrypted,
             encryptedPairing: isEncrypted,
             numberPad: true,
             mediaTransport: true
@@ -77,7 +77,7 @@ struct TVCapabilities: Sendable, Equatable {
         case .appLaunch:
             return "App launch is not supported for this TV protocol."
         case .trackpad:
-            return "Trackpad mode is only available on modern TVs."
+            return "Trackpad mode is not available for this TV profile."
         case .encryptedPairing:
             return "Encrypted pairing is not required for this TV."
         case .numberPad:

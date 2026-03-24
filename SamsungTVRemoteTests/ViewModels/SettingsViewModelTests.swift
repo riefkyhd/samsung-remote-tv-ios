@@ -32,7 +32,10 @@ struct SettingsViewModelTests {
 
         #expect(repo.pairingForgottenForTVs.count == 1)
         #expect(repo.savedTVs.count == 1)
-        #expect(sut.alertMessage == nil)
+        #expect(sut.alertTitle == "Pairing Reset")
+        #expect(sut.alertMessage == "Pairing data cleared. The next connection will require a new PIN.")
+        #expect(sut.isPairingCleared(for: tv))
+        #expect(sut.forgetPairingButtonTitle(for: tv) == "Pairing Cleared")
     }
 
     @Test("removeDevice removes saved tv")
@@ -47,7 +50,9 @@ struct SettingsViewModelTests {
 
         #expect(repo.removedTVs.count == 1)
         #expect(repo.savedTVs.isEmpty)
-        #expect(sut.alertMessage == nil)
+        #expect(sut.alertTitle == "Device Removed")
+        #expect(sut.alertMessage == "Saved TV and pairing data were removed.")
+        #expect(!sut.isPairingCleared(for: tv))
     }
 
     @Test("saveRemoteName writes through use case")

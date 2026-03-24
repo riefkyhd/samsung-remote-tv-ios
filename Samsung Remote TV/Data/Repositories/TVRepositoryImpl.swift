@@ -1,6 +1,35 @@
 import Foundation
 import Network
 
+protocol SpcWebSocketTransport: Sendable {
+    func connect(ipAddress: String, remoteName: String) async -> AsyncStream<TVConnectionState>
+    func disconnect() async
+    func sendKey(_ key: RemoteKey, command: String, ctxHex: String, sessionID: String) async throws
+}
+
+protocol SpcHandshakeTransport: Sendable {
+    func startPairing(
+        tv: SamsungTV,
+        deviceID: String,
+        preferredStep0: String?,
+        preferredStep1: String?
+    ) async throws
+
+    func completePairing(
+        tv: SamsungTV,
+        pin: String,
+        deviceID: String,
+        preferredStep0: String?,
+        preferredStep1: String?
+    ) async throws -> (
+        credentials: TVUserDefaultsStorage.SpcCredentials,
+        step0Variant: String,
+        step1Variant: String
+    )
+
+    func cancelPairing(tv: SamsungTV) async
+}
+
 final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     enum ActiveTransport: Sendable {
         case webSocket
@@ -138,8 +167,8 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
     private let restClient: SamsungTVRestClient
     private let webSocketClient: SamsungTVWebSocketClient
     private let smartViewClient: SmartViewSDKClient
-    private let spcWebSocketClient: SpcWebSocketClient
-    private let spcHandshakeClient: SpcHandshakeClient
+    private let spcWebSocketClient: SpcWebSocketTransport
+    private let spcHandshakeClient: SpcHandshakeTransport
     private let legacyRemoteClient: SamsungLegacyRemoteClient
     private let storage: TVUserDefaultsStorage
     private let sensitiveStorage: TVSensitiveStorage
@@ -152,8 +181,8 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         restClient: SamsungTVRestClient,
         webSocketClient: SamsungTVWebSocketClient,
         smartViewClient: SmartViewSDKClient,
-        spcWebSocketClient: SpcWebSocketClient,
-        spcHandshakeClient: SpcHandshakeClient,
+        spcWebSocketClient: SpcWebSocketTransport,
+        spcHandshakeClient: SpcHandshakeTransport,
         legacyRemoteClient: SamsungLegacyRemoteClient,
         storage: TVUserDefaultsStorage,
         secureStorage: TVSecureStorage,
@@ -681,16 +710,28 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
                 break
             }
             continuation.yield(state)
-            if case .connected = state {
+            switch state {
+            case .connected:
                 everConnected = true
                 await connectionCoordinator.markConnected(session: sessionID)
                 try? saveTV(tv)
-            }
-            if case .error = state {
+            case .error(let error):
                 await connectionCoordinator.markDisconnected(session: sessionID)
-            }
-            if case .disconnected = state {
+                if case .spcTokenExpired = error {
+                    DiagnosticsLogger.log(
+                        .pairing,
+                        "spc first-command readiness failed; clearing stale credentials",
+                        metadata: ["ip": tv.ipAddress]
+                    )
+                    await connectionCoordinator.setActiveSpcCredentials(nil, session: sessionID)
+                    sensitiveStorage.deleteSensitiveData(identifier: tokenIdentifier(for: tv))
+                    await spcWebSocketClient.disconnect()
+                    return false
+                }
+            case .disconnected:
                 await connectionCoordinator.markDisconnected(session: sessionID)
+            default:
+                break
             }
         }
         return everConnected
@@ -818,6 +859,7 @@ final class TVRepositoryImpl: TVRepository, @unchecked Sendable {
         await connectionCoordinator.clearPairingInProgress(
             session: await connectionCoordinator.currentSessionID()
         )
+        await spcHandshakeClient.cancelPairing(tv: tv)
     }
 
     private func isLikelyLegacyEncrypted(_ tv: SamsungTV) -> Bool {

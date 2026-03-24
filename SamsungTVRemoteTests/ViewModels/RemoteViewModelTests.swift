@@ -168,9 +168,9 @@ struct RemoteViewModelTests {
         let vm = makeViewModel(repository: repo)
 
         vm.connect()
-        try? await Task.sleep(for: .milliseconds(40))
-
-        #expect(vm.connectionLabel == "Reconnecting...")
+        await waitUntil("connection label becomes reconnecting") {
+            vm.connectionLabel == "Reconnecting..."
+        }
     }
 
     @Test("PIN timeout message is actionable")
@@ -180,10 +180,9 @@ struct RemoteViewModelTests {
         let vm = makeViewModel(repository: repo)
 
         vm.connect()
-        try? await Task.sleep(for: .milliseconds(30))
-
-        #expect(vm.showError)
-        #expect(vm.errorMessage.contains("30 seconds"))
+        await waitUntil("pin timeout error is surfaced") {
+            vm.showError && vm.errorMessage.contains("30 seconds")
+        }
     }
 
     @Test("Diagnostics capture connect-stream error context")
@@ -193,10 +192,10 @@ struct RemoteViewModelTests {
         let vm = makeViewModel(repository: repo)
 
         vm.connect()
-        try? await Task.sleep(for: .milliseconds(40))
-
-        #expect(vm.lastErrorSummary?.contains("connect_stream") == true)
-        #expect(vm.diagnosticsEvents.contains(where: { $0.contains("[error]") }))
+        await waitUntil("connect-stream error is recorded in diagnostics") {
+            vm.lastErrorSummary?.contains("connect_stream") == true &&
+                vm.diagnosticsEvents.contains(where: { $0.contains("[error]") })
+        }
     }
 
     @Test("Diagnostics include capability resolution details")
@@ -244,5 +243,20 @@ struct RemoteViewModelTests {
             disconnectTVUseCase: DisconnectTVUseCase(repository: repository),
             launchTVAppUseCase: LaunchTVAppUseCase(repository: repository)
         )
+    }
+
+    private func waitUntil(
+        _ description: String,
+        timeout: Duration = .seconds(1),
+        step: Duration = .milliseconds(20),
+        condition: @escaping @MainActor () -> Bool
+    ) async {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        while ContinuousClock.now < deadline {
+            if condition() { return }
+            try? await Task.sleep(for: step)
+        }
+        _ = description
+        #expect(condition())
     }
 }
