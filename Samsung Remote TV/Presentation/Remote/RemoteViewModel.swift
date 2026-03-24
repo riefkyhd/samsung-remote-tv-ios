@@ -36,6 +36,16 @@ final class RemoteViewModel {
     private let launchTVAppUseCase: LaunchTVAppUseCase
     private var connectionTask: Task<Void, Never>?
     private var pinTimerTask: Task<Void, Never>?
+    private var directionalRepeatSendInFlight = false
+    private var directionalRepeatGeneration: UInt64 = 0
+    private var directionalRepeatSendTask: Task<Void, Never>?
+    private var volumeRepeatSendInFlight = false
+    private var volumeRepeatGeneration: UInt64 = 0
+    private var volumeRepeatSendTask: Task<Void, Never>?
+    private var lastJuDirectionalRepeatIssuedAt: ContinuousClock.Instant?
+    private var lastJuVolumeRepeatIssuedAt: ContinuousClock.Instant?
+    private let juDirectionalRepeatMinInterval: Duration = .milliseconds(170)
+    private let juVolumeRepeatMinInterval: Duration = .milliseconds(220)
 
     init(
         tv: SamsungTV,
@@ -173,15 +183,92 @@ final class RemoteViewModel {
                 lastKeyPressed = key
                 hasConfirmedControl = true
             } catch {
-                showError = true
-                if let tvError = error as? TVError {
-                    errorMessage = userFriendlyMessage(for: tvError)
-                } else {
-                    errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
-                }
-                recordError(context: "send_key", error: errorMessage)
+                handleCommandError(error, context: "send_key")
             }
         }
+    }
+
+    func sendDirectionalKey(_ key: RemoteKey, isRepeat: Bool) {
+        guard canSendCommands else { return }
+        if !isRepeat {
+            sendKeyImmediate(key, context: "send_key_directional_initial")
+            return
+        }
+        guard shouldIssueJURepeat(isVolume: false) else { return }
+        if directionalRepeatSendInFlight { return }
+
+        let generation = directionalRepeatGeneration
+        directionalRepeatSendTask = Task {
+            guard generation == directionalRepeatGeneration else { return }
+            directionalRepeatSendInFlight = true
+            defer {
+                directionalRepeatSendInFlight = false
+                directionalRepeatSendTask = nil
+            }
+            guard generation == directionalRepeatGeneration else { return }
+            guard !Task.isCancelled else { return }
+
+            do {
+                try await sendRemoteKeyUseCase.executeImmediate(key)
+                guard generation == directionalRepeatGeneration else { return }
+                lastKeyPressed = key
+                hasConfirmedControl = true
+            } catch is CancellationError {
+                return
+            } catch {
+                handleCommandError(error, context: "send_key_repeat")
+            }
+        }
+    }
+
+    func cancelDirectionalRepeats() {
+        directionalRepeatGeneration &+= 1
+        directionalRepeatSendTask?.cancel()
+        directionalRepeatSendTask = nil
+    }
+
+    func sendVolumeKey(_ key: RemoteKey, isRepeat: Bool) {
+        guard canSendCommands else { return }
+        guard key == .KEY_VOLUP || key == .KEY_VOLDOWN else {
+            sendKey(key)
+            return
+        }
+
+        if !isRepeat {
+            sendKeyImmediate(key, context: "send_key_volume_initial")
+            return
+        }
+        guard shouldIssueJURepeat(isVolume: true) else { return }
+        if volumeRepeatSendInFlight { return }
+
+        let generation = volumeRepeatGeneration
+        volumeRepeatSendTask = Task {
+            guard generation == volumeRepeatGeneration else { return }
+            volumeRepeatSendInFlight = true
+            defer {
+                volumeRepeatSendInFlight = false
+                volumeRepeatSendTask = nil
+            }
+            guard generation == volumeRepeatGeneration else { return }
+            guard !Task.isCancelled else { return }
+
+            do {
+                try await sendRemoteKeyUseCase.executeImmediate(key)
+                guard generation == volumeRepeatGeneration else { return }
+                lastKeyPressed = key
+                hasConfirmedControl = true
+            } catch is CancellationError {
+                return
+            } catch {
+                handleCommandError(error, context: "send_key_volume_repeat")
+            }
+        }
+    }
+
+    func cancelVolumeRepeats() {
+        volumeRepeatGeneration &+= 1
+        volumeRepeatSendTask?.cancel()
+        volumeRepeatSendTask = nil
     }
 
     func sendLongPressPower() {
@@ -482,5 +569,44 @@ final class RemoteViewModel {
         default:
             return L10n.text("remote.error_action_failed", "Action failed. Check TV power/Wi-Fi and retry.")
         }
+    }
+
+    private func handleCommandError(_ error: Error, context: String) {
+        showError = true
+        if let tvError = error as? TVError {
+            errorMessage = userFriendlyMessage(for: tvError)
+        } else {
+            errorMessage = L10n.text("remote.error_connect_default", "Could not connect. Please make sure the TV is on.")
+        }
+        recordError(context: context, error: errorMessage)
+    }
+
+    private func sendKeyImmediate(_ key: RemoteKey, context: String) {
+        Task {
+            do {
+                try await sendRemoteKeyUseCase.executeImmediate(key)
+                lastKeyPressed = key
+                hasConfirmedControl = true
+            } catch {
+                handleCommandError(error, context: context)
+            }
+        }
+    }
+
+    private func shouldIssueJURepeat(isVolume: Bool) -> Bool {
+        guard tv.protocolType == .encrypted else { return true }
+        let now = ContinuousClock.now
+        if isVolume {
+            if let last = lastJuVolumeRepeatIssuedAt, now - last < juVolumeRepeatMinInterval {
+                return false
+            }
+            lastJuVolumeRepeatIssuedAt = now
+            return true
+        }
+        if let last = lastJuDirectionalRepeatIssuedAt, now - last < juDirectionalRepeatMinInterval {
+            return false
+        }
+        lastJuDirectionalRepeatIssuedAt = now
+        return true
     }
 }

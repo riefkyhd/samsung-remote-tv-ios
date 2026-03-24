@@ -11,9 +11,9 @@ struct RemoteViewModelTests {
         vm.connectionState = .connected
 
         vm.sendKey(.KEY_UP)
-        try? await Task.sleep(for: .milliseconds(30))
-
-        #expect(vm.lastKeyPressed == .KEY_UP)
+        await waitUntil("key press updates lastKeyPressed") {
+            vm.lastKeyPressed == .KEY_UP
+        }
     }
 
     @Test("Disconnection event updates connectionState to .disconnected")
@@ -33,10 +33,9 @@ struct RemoteViewModelTests {
         vm.connectionState = .connected
 
         vm.sendKey(.KEY_UP)
-        try? await Task.sleep(for: .milliseconds(30))
-
-        #expect(vm.showError)
-        #expect(!vm.errorMessage.isEmpty)
+        await waitUntil("send failure surfaces actionable error") {
+            vm.showError && !vm.errorMessage.isEmpty
+        }
     }
 
     @Test("Number pad toggle twice returns numberPadVisible to false")
@@ -216,6 +215,50 @@ struct RemoteViewModelTests {
 
         let serialized = vm.diagnosticsEvents.joined(separator: " ")
         #expect(!serialized.contains("1234"))
+    }
+
+    @Test("Encrypted TV directional repeats are rate-limited to reduce SPC clumping")
+    func encryptedDirectionalRepeatsAreRateLimited() async {
+        let repo = MockTVRepository()
+        let encryptedTV = SamsungTV(
+            name: "Encrypted",
+            ipAddress: "192.168.1.50",
+            macAddress: "AA:BB:CC:DD:EE:11",
+            model: "JU6700",
+            type: .encrypted
+        )
+        let vm = makeViewModel(repository: repo, tv: encryptedTV)
+        vm.connectionState = .connected
+
+        vm.sendDirectionalKey(.KEY_RIGHT, isRepeat: true)
+        vm.sendDirectionalKey(.KEY_RIGHT, isRepeat: true)
+        vm.sendDirectionalKey(.KEY_RIGHT, isRepeat: true)
+        try? await Task.sleep(for: .milliseconds(80))
+
+        let rightClicks = repo.sentKeys.filter { $0.0 == .KEY_RIGHT && $0.1 == "Click" }
+        #expect(rightClicks.count == 1)
+    }
+
+    @Test("Modern TV directional repeats are not JU-throttled")
+    func modernDirectionalRepeatsAreNotJUThrottled() async {
+        let repo = MockTVRepository()
+        let modernTV = SamsungTV(
+            name: "Modern",
+            ipAddress: "192.168.1.70",
+            macAddress: "AA:BB:CC:DD:EE:70",
+            model: "M7",
+            type: .tizen
+        )
+        let vm = makeViewModel(repository: repo, tv: modernTV)
+        vm.connectionState = .connected
+
+        vm.sendDirectionalKey(.KEY_RIGHT, isRepeat: true)
+        try? await Task.sleep(for: .milliseconds(20))
+        vm.sendDirectionalKey(.KEY_RIGHT, isRepeat: true)
+        try? await Task.sleep(for: .milliseconds(20))
+
+        let rightClicks = repo.sentKeys.filter { $0.0 == .KEY_RIGHT && $0.1 == "Click" }
+        #expect(rightClicks.count >= 2)
     }
 
     private func makeViewModel(

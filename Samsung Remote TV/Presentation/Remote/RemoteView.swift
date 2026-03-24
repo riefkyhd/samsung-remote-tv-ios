@@ -157,8 +157,10 @@ struct RemoteView: View {
                     viewModel.sendKey(key)
                 }
             } else {
-                DPadController { key in
-                    viewModel.sendKey(key)
+                DPadController { key, isRepeat in
+                    viewModel.sendDirectionalKey(key, isRepeat: isRepeat)
+                } onRelease: {
+                    viewModel.cancelDirectionalRepeats()
                 }
                 .frame(width: 250)
             }
@@ -169,7 +171,11 @@ struct RemoteView: View {
             }
 
             HStack(alignment: .top, spacing: 24) {
-                VolumeControl { key in viewModel.sendKey(key) }
+                VolumeControl { key, isRepeat in
+                    viewModel.sendVolumeKey(key, isRepeat: isRepeat)
+                } onRelease: {
+                    viewModel.cancelVolumeRepeats()
+                }
                 ChannelControl { key in viewModel.sendKey(key) }
             }
 

@@ -33,6 +33,10 @@ struct SendRemoteKeyUseCase: Sendable {
         try await repository.sendKey(key, command: "Click")
     }
 
+    func executeImmediate(_ key: RemoteKey) async throws {
+        try await repository.sendKey(key, command: "Click")
+    }
+
     func longPress(_ key: RemoteKey, duration: Duration = .milliseconds(800)) async throws {
         try await repository.sendKey(key, command: "Press")
         try await Task.sleep(for: duration)
